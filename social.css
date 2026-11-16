@@ -1,0 +1,55 @@
+/* WeakGym — Social : styles (chargé par index.html) */
+.soc-top{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.soc-top h1{margin:0;margin-right:auto;font-size:clamp(28px,6vw,38px)}
+.soc-act{display:flex;align-items:center;gap:8px}
+.soc-act .av{width:40px;height:40px;font-size:18px}
+.soc-act .av.on:after{display:none}
+.ibtn{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--soft);color:var(--ink);text-decoration:none}
+.ibtn:hover{background:color-mix(in srgb,var(--acc) 15%,var(--soft));color:var(--acc)}
+.ibtn svg,.soc-new svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.soc-new{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 4px}
+
+/* publication */
+.post{padding:0;overflow:hidden;margin:12px 0}
+.post-h{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.post-h .av{width:38px;height:38px;font-size:17px}
+.post-h .mem small{display:block;color:var(--mute);font-size:13px}
+.post-h button.pk{min-height:0;padding:6px 10px;font-size:13px;border-radius:10px;flex:none}
+.post-i{display:block;width:100%;max-height:78vh;object-fit:cover;background:var(--soft)}
+.post-a{display:flex;align-items:center;gap:10px;padding:8px 12px 0}
+.post-a .small{font-size:13px}
+.heart{display:inline-flex;align-items:center;gap:6px;background:none;color:var(--ink);padding:6px 8px 6px 2px;min-height:0;border-radius:10px;font-weight:700}
+.heart:hover:not(:disabled){filter:none;color:var(--bad)}
+.heart svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;transition:transform .15s}
+.heart.on{color:var(--bad)}.heart.on svg{fill:currentColor}
+.heart:active svg{transform:scale(1.25)}
+.post-t{margin:2px 12px 12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.post-t b{margin-right:4px}
+
+/* profil */
+.pr{display:flex;align-items:center;gap:18px;margin:0 0 10px}
+.pr .av,.pr .av.xl{width:84px;height:84px;font-size:36px}
+.pr-s{display:flex;flex:1;justify-content:space-around;text-align:center;min-width:0}
+.pr-s button{background:none;color:var(--ink);padding:4px 6px;min-height:0;border-radius:10px;font:inherit;line-height:1.25}
+.pr-s button:hover:not(:disabled){background:var(--soft);filter:none}
+.pr-s b{display:block;font:800 21px var(--hf)}
+.pr-s span{font-size:13px;color:var(--mute);font-weight:500}
+.pr-n{margin:0;font:800 clamp(22px,5vw,28px)/1.1 var(--hf);letter-spacing:-.02em}
+.pr-m{margin:2px 0 0;font-size:14px;color:var(--mute)}
+.pr-b{margin:8px 0 12px}
+.pr-act{display:flex;gap:8px;margin:0 0 6px}.pr-act>*{flex:1}
+.pg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin-top:14px;border-radius:14px;overflow:hidden}
+.pg button{padding:0;border:0;border-radius:0;aspect-ratio:1;background:var(--soft);min-height:0}
+.pg img{width:100%;height:100%;object-fit:cover;display:block}
+.pg-e{text-align:center;padding:28px 10px}
+.chk{display:flex;align-items:center;gap:10px;margin:14px 0 0;font-weight:500;font-size:15px;cursor:pointer}
+.chk input{width:20px;height:20px;flex:none;accent-color:var(--acc)}
+.cmp-p{display:block;width:100%;max-height:300px;object-fit:cover;border-radius:14px;margin:10px 0 0}
+
+.soc-top h1{display:flex;align-items:center;gap:10px}
+.soc-top h1 .ic{width:.85em;height:.85em;color:var(--acc);flex:none}
+.ibtn{position:relative}
+.ibtn .ic{width:20px;height:20px}
+.ibtn .bd{position:absolute;top:-4px;right:-4px;margin:0;padding:0 5px;font-size:11px}
+.post-h button.pk{display:inline-flex;align-items:center;gap:6px}
+.post-h button.pk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
