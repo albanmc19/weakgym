@@ -1940,7 +1940,7 @@ const wireFollow = (root, done) => root.querySelectorAll('[data-f]').forEach(b =
   b.disabled = true;
   try { await toggleFollow(b.dataset.f, b.dataset.on === '1'); await done(); } catch (e) { alert('Erreur : ' + e.message); b.disabled = false; }
 });
-const memRow = (u, me, fol) => `<div class="card item"><a class="mem" href="#/profil/${esc(u.uid)}">${av(u)}<span><b>${esc(u.name || 'Sans nom')}${u.uid === me ? ' (moi)' : ''}</b><span class="mute ${isOnline(u.seen) || u.uid === me ? 'on-t' : ''}">${lastSeen(u.seen, u.uid === me)}</span></span></a>${u.uid === me ? '' : fbtn(u.uid, fol.has(u.uid))}</div>`;
+const memRow = (u, me, fol) => `<div class="card item"><a class="mem" href="#/profil/${esc(u.uid)}">${av(u)}<span><b>${esc(u.name || 'Sans nom')}${window.wgBadges ? wgBadges(u) : ''}${u.uid === me ? ' (moi)' : ''}</b><span class="mute ${isOnline(u.seen) || u.uid === me ? 'on-t' : ''}">${lastSeen(u.seen, u.uid === me)}</span></span></a>${u.uid === me ? '' : fbtn(u.uid, fol.has(u.uid))}</div>`;
 
 async function membersPage() {
   app.innerHTML = '<h1>Membres</h1><p class="mute">Chargement…</p>';
