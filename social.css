@@ -77,3 +77,7 @@
 .mem b .vb{display:inline-block;vertical-align:-.16em}
 .pr-n .vb{width:.8em;height:.8em;margin-left:6px;vertical-align:-.05em}
 .chk .vb{width:22px;height:22px}
+
+/* modération */
+.mod-b{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 12px;font-size:13px;background:color-mix(in srgb,var(--warn) 18%,var(--soft));color:var(--ink)}
+.mod-b button.pk{min-height:0;padding:6px 10px;font-size:13px;border-radius:10px;flex:none}
