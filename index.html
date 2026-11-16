@@ -465,7 +465,7 @@ auth.onAuthStateChanged(async u => {
   }
   $('#out').hidden = !user; watchMsgs();
   if (user && myProf.onboarded === undefined && myProf.seen === undefined && !myProf.name) myProf.onboarded = false;
-  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now(), ...(myProf.onboarded === false ? {onboarded: false} : {})}, {merge: true}).catch(() => {});
+  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now()}, {merge: true}).then(() => myProf.onboarded === false ? db.collection('users').doc(user.uid).set({onboarded: false}, {merge: true}) : null).catch(() => {});
   beatSync(); setWho(); route(); notifCheck();
 });
 $('#out').onclick = () => { stopRest(); auth.signOut(); };
