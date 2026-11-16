@@ -4,13 +4,14 @@
 (() => {
 'use strict';
 
-const POSTS = () => db.collection('posts'), LIKES = () => db.collection('likes');
+const POSTS = () => db.collection('posts'), LIKES = () => db.collection('likes'), COMMENTS = () => db.collection('comments');
 const okImg = p => typeof p === 'string' && p.length < 900000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(p);
 const SV = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
   plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   lockC: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg>',
   lockO: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 9.6-1.7"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   heart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>'
 };
 const ago = ms => {
@@ -49,19 +50,21 @@ function readPostPhoto(file) {
 }
 
 /* ---------- j'aime ---------- */
-async function likeCount(id) {
+async function countBy(col, id) {
   try {
-    const q = LIKES().where('post', '==', id);
+    const q = col().where('post', '==', id);
     if (typeof q.count === 'function') { try { return (await q.count().get()).data().count; } catch (e) {} }
     return (await q.get()).size;
   } catch (e) { return null; }
 }
 async function newState() {
   const [users, mine] = await Promise.all([allUsers(true), LIKES().where('uid', '==', user.uid).get().catch(() => ({docs: []}))]);
-  return {users, me: new Set(mine.docs.map(d => d.data().post)), counts: {}};
+  return {users, me: new Set(mine.docs.map(d => d.data().post)), counts: {}, cc: {}};
 }
 async function loadCounts(st, list) {
-  await Promise.all(list.filter(p => (p.uid === user.uid || !p.hideLikes) && !(p.id in st.counts)).map(async p => { st.counts[p.id] = await likeCount(p.id); }));
+  await Promise.all(list.flatMap(p => [
+    (p.uid === user.uid || !p.hideLikes) && !(p.id in st.counts) ? countBy(LIKES, p.id).then(n => { st.counts[p.id] = n; }) : null,
+    !(p.id in st.cc) ? countBy(COMMENTS, p.id).then(n => { st.cc[p.id] = n; }) : null].filter(Boolean)));
 }
 const fromDocs = ds => ds.docs.map(d => ({id: d.id, ...d.data()})).filter(p => okImg(p.img));
 
@@ -74,8 +77,10 @@ function mountPost(p, st, onGone) {
     <div class="post-h"><a class="mem" href="#/profil/${esc(p.uid)}">${av(u)}<span><b>${esc(u.name || 'Sans nom')}</b><span class="mute">${ago(p.at)}</span></span></a>
       ${mine ? `<button class="alt pk" data-lk title="${p.hideLikes ? 'Les autres ne voient pas le nombre de j’aime' : 'Les autres voient le nombre de j’aime'}">${p.hideLikes ? SV.lockC + 'J’aime privés' : SV.lockO + 'J’aime publics'}</button>` : ''}${mine || isAdmin ? '<button class="del pk" data-del>' + (mine ? 'Supprimer' : 'Supprimer (admin)') + '</button>' : ''}</div>
     <img class="post-i" src="${p.img}" alt="Photo de ${esc(u.name || 'membre')}" loading="lazy">
-    <div class="post-a"><button class="heart ${liked ? 'on' : ''}" data-like aria-pressed="${liked}" aria-label="J’aime">${SV.heart}<span class="hn">${showN ? cnt : ''}</span></button></div>
-    ${p.text ? `<p class="post-t"><b>${esc(u.name || 'Sans nom')}</b>${esc(p.text)}</p>` : '<div style="height:10px"></div>'}</article>`;
+    <div class="post-a"><button class="heart ${liked ? 'on' : ''}" data-like aria-pressed="${liked}" aria-label="J’aime">${SV.heart}<span class="hn">${showN ? cnt : ''}</span></button>
+      <button class="heart cm" data-cm aria-expanded="false" aria-label="Commentaires">${SV.chat}<span class="hn">${st.cc[p.id] != null ? st.cc[p.id] : ''}</span></button></div>
+    ${p.text ? `<p class="post-t"><b>${esc(u.name || 'Sans nom')}</b>${esc(p.text)}</p>` : '<div style="height:10px"></div>'}
+    <div class="cmts" hidden></div></article>`;
   const root = el.firstElementChild, q = s => root.querySelector(s);
   q('[data-like]').onclick = async e => {
     const b = e.currentTarget, ref = LIKES().doc(p.id + '_' + user.uid), was = st.me.has(p.id);
@@ -88,6 +93,39 @@ function mountPost(p, st, onGone) {
     } catch (x) { alert('Erreur : ' + x.message); }
     b.disabled = false;
   };
+  const cbox = q('.cmts'), cb = q('[data-cm]'); let list = null;
+  const setN = () => { cb.querySelector('.hn').textContent = list ? list.length : (st.cc[p.id] != null ? st.cc[p.id] : ''); if (list) st.cc[p.id] = list.length; };
+  const drawC = () => {
+    cbox.innerHTML = `<div class="cl">${list.length ? list.map(c => {
+      const cu = st.users[c.uid] || {uid: c.uid, name: 'Ancien membre'}, can = c.uid === user.uid || mine || isAdmin;
+      return `<div class="cm-i"><a href="#/profil/${esc(c.uid)}" aria-hidden="true" tabindex="-1">${av(cu)}</a><p><a href="#/profil/${esc(c.uid)}"><b>${esc(cu.name || 'Sans nom')}</b></a> ${esc(c.text)}<small>${ago(c.at)}${can ? ` · <button class="cdel" data-cd="${esc(c.id)}">Supprimer</button>` : ''}</small></p></div>`;
+    }).join('') : '<p class="mute small">Aucun commentaire pour le moment.</p>'}</div>
+      <div class="cm-f"><input maxlength="300" placeholder="Ajouter un commentaire…" aria-label="Commentaire" autocomplete="off"><button type="button">Envoyer</button></div>`;
+    cbox.querySelectorAll('[data-cd]').forEach(b => b.onclick = async () => {
+      if (!confirm('Supprimer ce commentaire ?')) return; b.disabled = true;
+      try { await COMMENTS().doc(b.dataset.cd).delete(); list = list.filter(c => c.id !== b.dataset.cd); setN(); drawC(); } catch (x) { alert('Erreur : ' + x.message); b.disabled = false; }
+    });
+    const inp = cbox.querySelector('input'), send = cbox.querySelector('.cm-f button');
+    const go = async () => {
+      const text = inp.value.trim(); if (!text) return; send.disabled = true;
+      try {
+        const c = {post: p.id, uid: user.uid, text: text.slice(0, 300), at: Date.now()};
+        c.id = (await COMMENTS().add(c)).id; list.push(c); setN(); drawC(); cbox.querySelector('input').focus();
+      } catch (x) { alert('Erreur : ' + x.message); send.disabled = false; }
+    };
+    send.onclick = go; inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+  };
+  cb.onclick = async () => {
+    const open = cbox.hidden; cbox.hidden = !open; cb.setAttribute('aria-expanded', String(open));
+    if (!open) return;
+    if (!list) {
+      cbox.innerHTML = '<p class="mute small" style="margin:0">Chargement…</p>';
+      try { list = (await COMMENTS().where('post', '==', p.id).get()).docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => a.at - b.at); }
+      catch (x) { cbox.innerHTML = '<p class="err">Commentaires indisponibles.</p>'; return; }
+      setN();
+    }
+    drawC(); cbox.querySelector('input').focus();
+  };
   if (mine) {
     q('[data-lk]').onclick = async () => {
       try { await POSTS().doc(p.id).update({hideLikes: !p.hideLikes}); p.hideLikes = !p.hideLikes; if (!(p.id in st.counts)) await loadCounts(st, [p]); root.parentNode.replaceChild(mountPost(p, st, onGone), root); }
@@ -98,6 +136,7 @@ function mountPost(p, st, onGone) {
     q('[data-del]').onclick = async () => {
       if (!confirm(mine ? 'Supprimer cette publication ?' : 'Supprimer la publication de ' + (u.name || 'ce membre') + ' ?')) return;
       try {
+        try { const c = await COMMENTS().where('post', '==', p.id).get(); const b = db.batch(); c.docs.forEach(d => b.delete(d.ref)); if (c.size) await b.commit(); } catch (e) {}
         await POSTS().doc(p.id).delete();
         if (isAdmin) { try { const l = await LIKES().where('post', '==', p.id).get(); const b = db.batch(); l.docs.forEach(d => b.delete(d.ref)); if (l.size) await b.commit(); } catch (e) {} }
         onGone && onGone(p);
