@@ -505,6 +505,19 @@ function hideSplash() { const e = document.getElementById('splash'); if (!e || e
 setTimeout(hideSplash, 10000);   // sécurité : jamais bloqué si le réseau est très lent
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth(), db = firebase.firestore();
+// ----- Connexion persistante (reste connecté, même après fermeture de l'appli) -----
+(async () => {
+  try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }
+  catch (e) { try { await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION); } catch (x) {} }
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}   // demande au navigateur de ne pas purger la session
+})();
+let lastGuard = 0;
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !auth.currentUser || Date.now() - lastGuard < 6e5) return;
+  lastGuard = Date.now();
+  try { await auth.currentUser.getIdToken(); } catch (e) { return; }          // renouvelle le jeton ; une coupure réseau ne déconnecte pas
+  try { const d = await db.collection('users').doc(auth.currentUser.uid).get(); if (d.exists && d.data().blocked === true) auth.signOut(); } catch (e) {}   // un compte suspendu est déconnecté
+});
 const $ = s => document.querySelector(s), app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const VID = /^(www\.|m\.)?(youtube\.com|youtube-nocookie\.com|youtu\.be|vimeo\.com)$/i;
