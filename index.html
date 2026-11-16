@@ -412,6 +412,58 @@ body.onb nav,body.onb #me{display:none!important}
 .sw .tg{flex:none;position:relative;width:56px;height:32px;border-radius:99px;background:var(--line);transition:background .2s}
 .sw .tg:after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
 .sw.on .tg{background:var(--acc)}.sw.on .tg:after{transform:translateX(24px)}
+/* ===== Studio de partage ===== */
+.shm{position:fixed;inset:0;z-index:250;background:rgba(5,8,18,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:grid;place-items:end center}
+.shs{background:var(--card);color:var(--ink);width:min(560px,100%);height:min(94dvh,100%);max-height:94dvh;border-radius:24px 24px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh)}
+@media(prefers-reduced-motion:no-preference){.shs{animation:shu .24s cubic-bezier(.2,.8,.3,1)}@keyframes shu{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}}
+.shp{flex:none;display:grid;place-items:center;padding:14px 16px;background:color-mix(in srgb,var(--ink) 7%,var(--card));border-bottom:1px solid var(--line)}
+.shw{line-height:0;border-radius:16px;overflow:hidden;box-shadow:0 14px 34px -14px rgba(0,0,0,.55)}
+.shw.chk{background:conic-gradient(#8b93a7 25%,#c6ccda 0 50%,#8b93a7 0 75%,#c6ccda 0) 0 0/20px 20px}
+.shw canvas{display:block;width:auto;height:auto;max-width:100%;max-height:38dvh}
+.shr{display:flex;flex-direction:column;min-height:0;flex:1}
+.shh{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 4px}
+.shh b{font:800 22px var(--hf);letter-spacing:-.02em}
+.shh button{padding:0;width:40px;height:40px;border-radius:50%}
+.shb{flex:1;overflow:auto;padding:0 18px 12px;overscroll-behavior:contain}
+.shl{display:block;font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:16px 0 8px}
+.shseg{display:flex;background:var(--soft);border-radius:14px;padding:4px;gap:2px}
+.shseg button{flex:1;background:none;color:var(--mute);padding:8px 6px;border-radius:10px;font-size:15px;display:grid;line-height:1.2}
+.shseg button small{font-weight:500;font-size:12px;opacity:.8}
+.shseg button[aria-pressed=true]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.shth{display:flex;gap:10px;flex-wrap:wrap}
+.shth button{display:grid;gap:6px;justify-items:center;background:none;color:var(--mute);padding:4px;font-size:13px;font-weight:600;width:64px;border-radius:14px}
+.shth button[aria-pressed=true]{color:var(--ink)}
+.shth i{display:block;width:52px;height:52px;border-radius:16px;border:2px solid var(--line)}
+.shth button[aria-pressed=true] i{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 30%,transparent)}
+.sw-night{background:linear-gradient(145deg,#1d2848,#080c18)}
+.sw-fire{background:linear-gradient(145deg,#ff8a3d,#a8330a)}
+.sw-light{background:linear-gradient(145deg,#fff,#dfe5f1)}
+.sw-photo{background:linear-gradient(160deg,rgba(0,0,0,.1),rgba(0,0,0,.7)),linear-gradient(120deg,#5b8def,#e4540a)}
+.sw-sticker{background:conic-gradient(#8b93a7 25%,#c6ccda 0 50%,#8b93a7 0 75%,#c6ccda 0) 0 0/12px 12px}
+.shn{font-size:13px;margin:10px 0 0;line-height:1.45}
+.shtg{display:flex;align-items:center;gap:12px;margin:0;padding:9px 0;font-weight:500;font-size:16px;cursor:pointer;position:relative}
+.shtg input{position:absolute;opacity:0;width:1px;height:1px;padding:0;margin:0}
+.shsw{width:46px;height:28px;border-radius:99px;background:var(--soft);border:1px solid var(--line);position:relative;flex:none;transition:background .15s,border-color .15s}
+.shsw:after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--mute);transition:left .15s,background .15s}
+.shtg input:checked+.shsw{background:var(--acc);border-color:var(--acc)}
+.shtg input:checked+.shsw:after{left:21px;background:var(--acc-ink)}
+.shtg input:focus-visible+.shsw{outline:3px solid color-mix(in srgb,var(--acc) 60%,transparent);outline-offset:2px}
+#shcap{resize:vertical;min-height:84px;font-size:15px;line-height:1.45}
+.shlk{display:flex;gap:8px;flex-wrap:wrap}
+.shlk a{flex:1 1 auto;text-align:center;text-decoration:none;color:var(--ink);background:var(--soft);font-weight:600;font-size:15px;padding:10px 14px;border-radius:12px;transition:background .15s}
+.shlk a:hover{background:color-mix(in srgb,var(--acc) 16%,var(--soft))}
+.sha{flex:none;padding:10px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+.sha .row{gap:8px}.sha .row>*{flex:1 1 0;padding-left:10px;padding-right:10px;font-size:15px}
+.sha #shgo{flex:1.5 1 0}
+.shm2{margin:0 0 8px;min-height:20px;font-size:14px;font-weight:600;color:var(--ok)}
+@media(min-width:860px){
+  .shm{place-items:center}
+  .shs{width:min(1040px,94vw);height:min(86vh,820px);max-height:92vh;border-radius:24px;flex-direction:row}
+  .shp{flex:1 1 0;min-width:0;border-bottom:0;border-right:1px solid var(--line);padding:24px}
+  .shw canvas{max-height:calc(min(86vh,820px) - 48px)}
+  .shr{flex:0 0 420px}
+}
+.hshr{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -614,8 +666,9 @@ async function historyPage() {
       const mo = new Date(x.date + 'T12:00').toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'});
       const head = mo !== cur ? `<div class="hxm">${esc(mo)}</div>` : ''; cur = mo;
       const body = x.exercises.map((e, i) => { const st = l.sets && l.sets[i]; const t = st ? st.map(fmtSet).join(' · ') : String((l.w || {})[i] || '').trim(); return `<div class="hxr"><span>${l.done && l.done[i] ? '✓' : '○'} ${esc(e.name)}</span><span>${esc(t || '—')}</span></div>`; }).join('');
-      return `${head}<details class="card hxs"><summary><span><b>${esc(x.title)}</b><br><span class="mute">${esc(fmt(x.date))} · ${n}/${x.exercises.length} faits</span></span></summary>${body}${l.note ? `<p class="mute"><i>« ${esc(l.note)} »</i></p>` : ''}<p class="row" style="flex-wrap:wrap"><a class="btn alt" href="#/seance/${esc(x.id)}">Ouvrir / modifier la séance</a><button class="del" data-hdel="${esc(x.id)}">Supprimer de mon historique</button></p></details>`;
+      return `${head}<details class="card hxs"><summary><span><b>${esc(x.title)}</b><br><span class="mute">${esc(fmt(x.date))} · ${n}/${x.exercises.length} faits</span></span></summary>${body}${l.note ? `<p class="mute"><i>« ${esc(l.note)} »</i></p>` : ''}<p class="row" style="flex-wrap:wrap"><a class="btn alt" href="#/seance/${esc(x.id)}">Ouvrir / modifier la séance</a><button class="alt" data-hshr="${esc(x.id)}">Partager</button><button class="del" data-hdel="${esc(x.id)}">Supprimer de mon historique</button></p></details>`;
     }).join('');
+    $('#hl').querySelectorAll('[data-hshr]').forEach(b => b.onclick = () => { const r = rows.find(r => r.s.id === b.dataset.hshr); if (r) WGShare.session(r.s, {done: r.l.done || {}, sets: r.l.sets || {}, w: r.l.w || {}}, r.s.id); });
     $('#hl').querySelectorAll('[data-hdel]').forEach(b => b.onclick = async () => {
       if (!confirm('Effacer tes charges, tes exercices cochés et ton ressenti pour cette séance ?\nLa séance reste dans le calendrier.')) return;
       try { await db.collection('logs').doc(b.dataset.hdel + '_' + user.uid).delete(); histCache = {}; rows = rows.filter(r => r.s.id !== b.dataset.hdel); draw(); } catch (e) { alert(e.message); }
@@ -1266,7 +1319,7 @@ async function viewSession(id, label) {
         <div class="sta"><button class="alt" data-sadd="${i}">+ Série</button><button class="alt" data-srm="${i}" ${mine.sets[i].length <= 1 ? 'disabled' : ''}>− Série</button><button class="alt" data-scp="${i}">Même charge partout</button></div></div>
       ${okUrl(e.video) ? `<a class="vid" href="${esc(e.video)}" target="_blank" rel="noopener noreferrer">▶ Voir la vidéo</a>` : ''}</article>`).join('')}</div>
     <label for="note">Mon ressenti</label><textarea id="note" rows="3">${esc(mine.note)}</textarea>
-    <p><button id="save">Enregistrer</button> <span id="ok" class="tag"></span></p>
+    <p class="row" style="align-items:center"><button id="save" style="flex:none">Enregistrer</button><button id="shr" class="${n && n === s.exercises.length ? '' : 'alt'}" style="flex:none">Partager…</button><span id="ok" class="tag" style="flex:none"></span></p>
     ${isAdmin ? `<h2>Suivi</h2><div id="track" class="mute">Chargement…</div><p class="row" style="flex-wrap:wrap"><a class="btn alt" href="#/admin/${id}">Modifier la séance</a><button class="alt" id="cpy">Copier…</button><button class="del" id="sdel">Supprimer la séance</button></p>` : ''}`;
     app.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => { mine.done[c.dataset.i] = c.checked; if (c.checked) { const ex = s.exercises[c.dataset.i], r = parseRest(ex.rest); if (r) startRest(r, ex.name); } save(false); });
     app.querySelectorAll('[data-sw]').forEach(inp => inp.oninput = () => { upd(inp.dataset.sw.split(':')[0]); auto(); });
@@ -1285,6 +1338,7 @@ async function viewSession(id, label) {
     app.querySelectorAll('[data-scp]').forEach(b => b.onclick = () => { const i = b.dataset.scp; upd(i); const v = mine.sets[i].find(x => String(x).trim()); if (v) mine.sets[i] = mine.sets[i].map(() => v); sync(i); redo(); });
     app.querySelectorAll('[data-rest]').forEach(b => b.onclick = () => { const e = s.exercises[b.dataset.rest]; startRest(parseRest(e.rest), e.name); });
     $('#save').onclick = () => save(true);
+    $('#shr').onclick = () => { if ($('#note')) mine.note = $('#note').value; WGShare.session(s, mine, id); };
     fill();
     if (isAdmin) $('#cpy').onclick = () => copyModal(s);
     if (isAdmin) $('#sdel').onclick = async () => { if (!confirm('« ' + s.title + ' » (' + fmt(s.date) + ')\n' + delMsg(1))) return; try { await purgeSessions([id]); location.hash = '#/admin'; } catch (e) { alert(e.message); } };
@@ -1500,15 +1554,23 @@ async function progressPage() {
         <div class="card">${lineChart(l)}</div>
         <div class="stats"><div class="stat"><b>${fmtNum(last.num)}</b><span>Dernière charge (kg)</span></div><div class="stat"><b>${fmtNum(best.num)}</b><span>Record · ${short(best.date)}</span></div>
         <div class="stat"><b>${l.length > 1 ? (diff > 0 ? '+' : '') + fmtNum(diff) : '–'}</b><span>Depuis le début (kg)</span></div></div>
+        ${uid === user.uid ? '<p class="row"><button class="alt" id="shr">Partager ce record</button></p>' : ''}
         <div class="card">${l.slice(-8).reverse().map(x => `<a class="item" style="padding:8px 0;border-top:1px solid var(--line)" href="#/seance/${x.id}"><span><b>${esc(x.w)}</b><br><span class="mute">${esc(x.title)}</span></span><span class="mute">${short(x.date)}</span></a>`).join('').replace('border-top:1px solid var(--line)', 'border-top:0')}</div>`;
     }
     $('#pbody').innerHTML = `<div class="stats">
       <div class="stat"><b>${st.week}</b><span>Séances cette semaine</span></div><div class="stat"><b>${st.month}</b><span>Séances ce mois</span></div><div class="stat"><b>${st.total}</b><span>Séances au total</span></div>
       <div class="stat"><b>${st.cur}</b><span>Jour${st.cur > 1 ? 's' : ''} d’affilée</span></div><div class="stat"><b>${st.best}</b><span>Meilleure série (jours)</span></div><div class="stat"><b>${st.ws}</b><span>Semaine${st.ws > 1 ? 's' : ''} d’affilée</span></div></div>
+      ${uid === user.uid ? `<div class="card item"><span><b>Objectif de la semaine</b><br><span class="mute">Séances par semaine</span></span><span class="row nowrap" style="flex:none;align-items:center;gap:12px"><button class="alt" id="gm" style="flex:none;padding:8px 16px" aria-label="Moins">−</button><b id="gv" style="font:800 28px var(--hf);min-width:1.2em;text-align:center">3</b><button class="alt" id="gp" style="flex:none;padding:8px 16px" aria-label="Plus">+</button></span></div>
+      <p class="row"><button class="alt" id="shs">Partager ma régularité</button><button class="alt" id="shg">Partager mon objectif</button></p>` : ''}
       <h2>Séances par semaine</h2><div class="wk">${st.bars.map((b, i) => `<div><em>${b.n}</em><i class="${i === st.bars.length - 1 ? 'now' : ''}" style="height:${b.n / mxb * 78}%"></i></div>`).join('')}</div>
       <div class="wkl">${st.bars.map(b => `<span>${short(b.k)}</span>`).join('')}</div>
       <h2>Progression d’un exercice</h2>${exHtml}`;
     if ($('#exs')) $('#exs').onchange = e => { exKey = e.target.value; draw(); };
+    if ($('#shr')) $('#shr').onclick = () => WGShare.record(g);
+    if ($('#shs')) { $('#shs').onclick = () => WGShare.stats(st); $('#shg').onclick = () => WGShare.weekGoal(st, h.done);
+      const gv = weekGoalVal; $('#gv').textContent = gv();
+      $('#gm').onclick = () => { cloudSet('wgoal', Math.max(1, gv() - 1)); $('#gv').textContent = gv(); };
+      $('#gp').onclick = () => { cloudSet('wgoal', Math.min(7, gv() + 1)); $('#gv').textContent = gv(); }; }
   };
   app.innerHTML = `<h1>Progrès</h1>${isAdmin && users.length ? `<label for="pu">Voir les progrès de</label><select id="pu"><option value="${user.uid}">Moi</option>${users.map(u => `<option value="${esc(u.uid)}">${esc(u.name)}</option>`).join('')}</select>` : ''}<div id="pbody"><p class="mute">Chargement…</p></div>`;
   if ($('#pu')) $('#pu').onchange = e => { uid = e.target.value; exKey = null; draw(); };
@@ -1938,7 +2000,11 @@ async function weightPage() {
     const last = rows[rows.length - 1], first = rows[0], diff = last ? last.kg - first.kg : 0;
     $('#wbody').innerHTML = rows.length ? `<div class="stats s3"><div class="stat"><b>${fmtNum(last.kg)}</b><span>Poids actuel (kg)</span></div><div class="stat"><b>${rows.length > 1 ? (diff > 0 ? '+' : '') + fmtNum(diff) : '–'}</b><span>Évolution (kg)</span></div><div class="stat"><b>${rows.length}</b><span>Pesée${rows.length > 1 ? 's' : ''}</span></div></div>
       <div class="card">${lineChart(rows.map(r => ({date: r.date, num: r.kg})), true)}</div>
+      <p class="row"><button class="alt" id="wsh">Partager mon évolution</button>${WGShare.getTarget() ? '<button class="alt" id="wgs">Partager mon objectif</button>' : ''}</p>
+      <div class="card"><label for="wtg" style="margin-top:0">Objectif de poids (kg)</label><div class="row nowrap"><input id="wtg" inputmode="decimal" placeholder="ex. 75" value="${WGShare.getTarget() ? fmtNum(WGShare.getTarget()) : ''}"><button class="alt" id="wtgs" style="flex:none">${WGShare.getTarget() ? 'Modifier' : 'Définir'}</button></div></div>
       <h2>Historique</h2><div class="card">${[...rows].reverse().slice(0, 30).map(r => `<div class="wrow"><span><b>${fmtNum(r.kg)} kg</b><br><span class="mute">${esc(fmt(r.date))}${r.src === 'basicfit' ? ' · Basic-Fit' : ''}</span></span><button class="x" data-d="${esc(r.id)}">Supprimer</button></div>`).join('')}</div>` : '<p class="mute">Ajoute ta première pesée pour voir la courbe.</p>';
+    if ($('#wsh')) { $('#wsh').onclick = () => WGShare.weight(rows); if ($('#wgs')) $('#wgs').onclick = () => WGShare.weightGoal(rows);
+      $('#wtgs').onclick = () => { const v = parseFloat($('#wtg').value.replace(',', '.')); if ($('#wtg').value.trim() === '') { WGShare.setTarget(null); draw(); return; } if (!(v >= 20 && v <= 300)) { $('#wtg').focus(); return; } WGShare.setTarget(Math.round(v * 10) / 10); draw(); }; }
     $('#wbody').querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { if (!confirm('Supprimer cette pesée ?')) return; await col.doc(b.dataset.d).delete(); await load(); draw(); });
   };
   app.innerHTML = `<h1>Mon poids</h1><p class="mute">Visible par toi uniquement.</p>
@@ -2246,8 +2312,8 @@ async function astPro(raw, t) {
   }
   // 8. Série, régularité, objectif hebdo
   if (!named && /\b(serie|streak|regularite|assiduite|rythme|objectif|habitude|constance)\b/.test(t)) {
-    const gm = /\b([1-7])\b.*semaine/.exec(t); if (gm && /objectif|vise|but/.test(t)) spSet('wgoal', +gm[1]);
-    const H = await getHistory(user.uid), S = computeStats(H.done), goal = +spGet('wgoal') || 3, left = Math.max(0, goal - S.week), dl = WK();
+    const gm = /\b([1-7])\b.*semaine/.exec(t); if (gm && /objectif|vise|but/.test(t)) cloudSet('wgoal', +gm[1]);
+    const H = await getHistory(user.uid), S = computeStats(H.done), goal = weekGoalVal(), left = Math.max(0, goal - S.week), dl = WK();
     return O('<p>🔥 Série en cours : <b>' + S.cur + ' jour' + (S.cur > 1 ? 's' : '') + '</b> (record ' + S.best + ') · <b>' + S.ws + ' semaine' + (S.ws > 1 ? 's' : '') + '</b> d’affilée avec au moins une séance.</p><p>Objectif : <b>' + S.week + ' / ' + goal + '</b> séances cette semaine' + (left ? ' — il t’en reste ' + left + ' en ' + dl + ' jour' + (dl > 1 ? 's' : '') + (left > dl ? ' (ça fait beaucoup : ajuste ton objectif si besoin)' : '') + '.' : ' — objectif atteint, bravo ! 🎉') + '</p><p>8 dernières semaines : <span style="letter-spacing:2px">' + S.bars.map(b => '▁▂▃▄▅▆▇█'[Math.min(7, b.n)]).join('') + '</span></p><p class="mute">Pour changer l’objectif : « objectif 4 séances par semaine ».</p>');
   }
   // 9. Nutrition : protéines, calories, macros
@@ -2496,6 +2562,554 @@ async function savePrefs(d) {
     try { await ref.set({[k]: d[k]}, {merge: true}); } catch (e) { console.warn('Firestore : champ « ' + k + ' » refusé par les règles', e); }
   }
 }
+</script>
+<script>
+/* ===================================================================
+   WeakGym · Studio de partage
+   Génère des images (story 9:16, portrait 4:5, carré 1:1) à partir
+   des séances, records, poids et objectifs, puis les envoie via la
+   feuille de partage native (Instagram, TikTok, Snapchat, WhatsApp…),
+   les enregistre ou copie la légende.
+   =================================================================== */
+/* Données stockées sur Firebase (document users/{uid}), plus rien sur le téléphone */
+const LEGACY = {wgoal: () => 'wgoal', wtarget: () => 'wtarget_' + user.uid, shrFmt: () => 'shr_fmt', shrTheme: () => 'shr_theme'};
+function cloudGet(k) {
+  if (myProf && myProf[k] != null) return myProf[k];
+  const old = LEGACY[k] && spGet(LEGACY[k]());           // ancienne valeur locale : migrée une fois vers Firebase
+  if (old != null) { cloudSet(k, old); return old; }
+  return null;
+}
+function cloudSet(k, v) {
+  myProf = myProf || {}; if (v == null) delete myProf[k]; else myProf[k] = v;
+  if (LEGACY[k]) spSet(LEGACY[k](), null);
+  return db.collection('users').doc(user.uid).set({[k]: v == null ? firebase.firestore.FieldValue.delete() : v}, {merge: true}).catch(() => {});
+}
+const weekGoalVal = () => Math.min(7, Math.max(1, +cloudGet('wgoal') || 3));
+const WGShare = (() => {
+  const W = 1080, PADX = 84;
+  const HF = '"Bricolage Grotesque","Barlow Condensed",system-ui,sans-serif';
+  const BF = '"Instrument Sans",system-ui,sans-serif';
+  const F = (w, s, fam) => w + ' ' + Math.round(s) + 'px ' + (fam || BF);
+
+  const FORMATS = {
+    story:    {id: 'story',    label: 'Story',    sub: '9:16', w: 1080, h: 1920, padT: 230, padB: 330, z: {hero: 340, title: 112, rows: 6, rowH: 96, spark: 380, ring: 560, bars: 300, tl: 3}},
+    portrait: {id: 'portrait', label: 'Portrait', sub: '4:5',  w: 1080, h: 1350, padT: 90,  padB: 90,  z: {hero: 280, title: 96,  rows: 5, rowH: 84, spark: 300, ring: 430, bars: 240, tl: 3}},
+    square:   {id: 'square',   label: 'Carré',    sub: '1:1',  w: 1080, h: 1080, padT: 76,  padB: 76,  z: {hero: 220, title: 84,  rows: 3, rowH: 76, spark: 210, ring: 320, bars: 190, tl: 2}}
+  };
+  const PAL = {
+    night: {rgb: [255, 138, 61], ink: '#eef1f8', mute: '#9aa5bd', acc: '#ff8a3d', accInk: '#1a0e05', panel: 'rgba(255,255,255,.07)', line: 'rgba(255,255,255,.14)', dim: 'rgba(255,255,255,.2)', dot: '#0c1222'},
+    fire:  {rgb: [255, 255, 255], ink: '#ffffff', mute: 'rgba(255,255,255,.84)', acc: '#ffffff', accInk: '#b23d05', panel: 'rgba(0,0,0,.18)', line: 'rgba(255,255,255,.34)', dim: 'rgba(255,255,255,.3)', dot: '#d9480a'},
+    light: {rgb: [228, 84, 10], ink: '#101627', mute: '#5b6479', acc: '#e4540a', accInk: '#ffffff', panel: '#ffffff', line: '#d9deea', dim: '#d3d9e8', dot: '#ffffff'}
+  };
+  PAL.photo = Object.assign({}, PAL.night, {mute: '#d7dcea', panel: 'rgba(0,0,0,.38)', line: 'rgba(255,255,255,.28)', dot: '#000'});
+  PAL.sticker = Object.assign({}, PAL.night);
+  const THEMES = [['night', 'Nuit'], ['fire', 'Feu'], ['light', 'Clair'], ['photo', 'Photo'], ['sticker', 'Sticker']];
+
+  /* ---------- utilitaires canvas ---------- */
+  const rgba = (rgb, a) => 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + a + ')';
+  const ls = (c, v) => { if ('letterSpacing' in c) c.letterSpacing = v; };
+  function rr(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  function fit(c, t, maxW) {
+    t = String(t);
+    if (c.measureText(t).width <= maxW) return t;
+    while (t.length > 1 && c.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+    return t.trimEnd() + '…';
+  }
+  function wrap(c, text, maxW, maxLines) {
+    const words = String(text).split(/\s+/).filter(Boolean), lines = []; let cur = '';
+    words.forEach(w => { const t = cur ? cur + ' ' + w : w; if (c.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; } });
+    if (cur) lines.push(cur);
+    if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = lines[maxLines - 1] + '…'; }
+    return lines.map(l => fit(c, l, maxW));
+  }
+  function smooth(c, p) {
+    c.moveTo(p[0][0], p[0][1]);
+    for (let i = 0; i < p.length - 1; i++) {
+      const a = p[i - 1] || p[i], b = p[i], d = p[i + 1], e = p[i + 2] || d, t = .18;
+      c.bezierCurveTo(b[0] + (d[0] - a[0]) * t, b[1] + (d[1] - a[1]) * t, d[0] - (e[0] - b[0]) * t, d[1] - (e[1] - b[1]) * t, d[0], d[1]);
+    }
+  }
+
+  /* ---------- blocs (mesure + dessin) ---------- */
+  const G = (b, g) => { b.g = g; return b; };
+  const bLabel = (c, P, t, o) => ({h: 36, draw(c, x, y) {
+    c.font = F(600, 27); ls(c, '5px'); c.fillStyle = (o && o.color) || P.mute; c.textAlign = 'left'; c.fillText(String(t).toUpperCase(), x, y + 27); ls(c, '0px');
+  }});
+  function bTitle(c, P, cw, text, o) {
+    const s = o.size, lh = Math.round(s * 1.02);
+    c.font = F(800, s, HF); ls(c, (-s * .02) + 'px'); const L = wrap(c, text, cw, o.lines || 3); ls(c, '0px');
+    return {h: L.length * lh, draw(c, x, y) {
+      c.font = F(800, s, HF); ls(c, (-s * .02) + 'px'); c.fillStyle = o.color || P.ink; c.textAlign = 'left';
+      L.forEach((l, i) => c.fillText(l, x, y + s * .86 + i * lh)); ls(c, '0px');
+    }};
+  }
+  function bText(c, P, cw, t, o) {
+    o = o || {}; const s = o.size || 36, lh = Math.round(s * 1.3), w = o.w || 500;
+    c.font = F(w, s); const L = wrap(c, t, cw, o.lines || 2);
+    return {h: L.length * lh, draw(c, x, y) { c.font = F(w, s); c.fillStyle = o.color || P.mute; c.textAlign = 'left'; L.forEach((l, i) => c.fillText(l, x, y + s + i * lh)); }};
+  }
+  function bHero(c, P, cw, value, unit, o) {
+    let s = o.size;
+    const wd = () => { c.font = F(800, s, HF); ls(c, (-s * .02) + 'px'); const a = c.measureText(value).width; ls(c, '0px'); c.font = F(600, s * .26); return a + (unit ? c.measureText(unit).width + s * .08 : 0); };
+    while (s > 90 && wd() > cw) s -= 6;
+    return {h: Math.round(s * .94), draw(c, x, y) {
+      const base = y + s * .8; c.textAlign = 'left'; c.font = F(800, s, HF); ls(c, (-s * .02) + 'px'); c.fillStyle = o.color || P.ink;
+      c.fillText(value, x, base); const a = c.measureText(value).width; ls(c, '0px');
+      if (unit) { c.font = F(600, s * .26); c.fillStyle = P.mute; c.fillText(unit, x + a + s * .08, base); }
+    }};
+  }
+  function bBadge(c, P, t, o) {
+    o = o || {}; c.font = F(600, 28); ls(c, '2px'); const tw = c.measureText(String(t).toUpperCase()).width; ls(c, '0px');
+    return {h: 64, draw(c, x, y) {
+      rr(c, x, y, tw + 52, 64, 32);
+      if (o.solid) { c.fillStyle = P.acc; c.fill(); } else { c.fillStyle = rgba(P.rgb, .16); c.fill(); c.strokeStyle = rgba(P.rgb, .5); c.lineWidth = 2; c.stroke(); }
+      c.font = F(600, 28); ls(c, '2px'); c.fillStyle = o.solid ? P.accInk : P.acc; c.textAlign = 'left'; c.fillText(String(t).toUpperCase(), x + 26, y + 42); ls(c, '0px');
+    }};
+  }
+  function bStats(c, P, cw, items) {
+    const h = 176, n = items.length;
+    return {h, draw(c, x, y, cw) {
+      rr(c, x, y, cw, h, 32); c.fillStyle = P.panel; c.fill(); c.strokeStyle = P.line; c.lineWidth = 2; c.stroke();
+      const col = cw / n; c.textAlign = 'center';
+      items.forEach((it, i) => {
+        const cx = x + col * i + col / 2; let s = 64; c.font = F(800, s, HF);
+        while (s > 32 && c.measureText(it.v).width > col - 36) { s -= 4; c.font = F(800, s, HF); }
+        c.fillStyle = P.ink; c.fillText(it.v, cx, y + 92);
+        c.font = F(500, 26); c.fillStyle = P.mute; c.fillText(fit(c, it.l, col - 24), cx, y + 138);
+        if (i) { c.fillStyle = P.line; c.fillRect(x + col * i - 1, y + 36, 2, h - 72); }
+      });
+    }};
+  }
+  function bList(c, P, cw, items, rowH) {
+    return {h: items.length * rowH, draw(c, x, y, cw) {
+      items.forEach((it, i) => {
+        const yy = y + i * rowH, base = yy + rowH / 2 + 13;
+        if (i) { c.fillStyle = P.line; c.fillRect(x, yy, cw, 2); }
+        if (it.more) { c.textAlign = 'left'; c.font = F(500, 32); c.fillStyle = P.mute; c.fillText(it.more, x, base); return; }
+        let right = x + cw; const d = it.d || '';
+        c.textAlign = 'right'; c.font = F(800, 36, HF); c.fillStyle = P.ink;
+        if (d) { c.fillText(d, right, base); right -= c.measureText(d).width + 20; }
+        if (it.pr) {
+          c.font = F(600, 20); ls(c, '2px'); const pw = c.measureText('RECORD').width + 32;
+          rr(c, right - pw, base - 31, pw, 38, 19); c.fillStyle = P.acc; c.fill();
+          c.fillStyle = P.accInk; c.textAlign = 'center'; c.fillText('RECORD', right - pw / 2 + 1, base - 5); ls(c, '0px'); right -= pw + 14;
+        }
+        c.beginPath(); c.arc(x + 11, base - 11, 9, 0, 7); c.fillStyle = P.acc; c.fill();
+        c.textAlign = 'left'; c.font = F(600, 38); c.fillStyle = P.ink; c.fillText(fit(c, it.n, right - (x + 42)), x + 42, base);
+      });
+    }};
+  }
+  function bSpark(c, P, cw, pts, o) {
+    const h = o.h, showY = o.showY !== false, fv = o.fmtV || (v => String(v));
+    return {h, draw(c, x, y, cw) {
+      const top = y + (showY ? 62 : 30), bot = y + h - 58, L = x + 16, R = x + cw - 16;
+      const vs = pts.map(p => p.v), mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs), sp = mx - mn;
+      const lo = sp ? mn - sp * .12 : mn - 1, hi = sp ? mx + sp * .12 : mx + 1;
+      const X = i => pts.length === 1 ? (L + R) / 2 : L + i * (R - L) / (pts.length - 1), Y = v => top + (hi - v) / (hi - lo) * (bot - top);
+      c.strokeStyle = P.line; c.lineWidth = 2; c.setLineDash([4, 12]);
+      [top, (top + bot) / 2, bot].forEach(gy => { c.beginPath(); c.moveTo(x, gy); c.lineTo(x + cw, gy); c.stroke(); });
+      c.setLineDash([]);
+      const xy = pts.map((p, i) => [X(i), Y(p.v)]);
+      if (pts.length > 1) {
+        c.beginPath(); smooth(c, xy); c.lineTo(xy[xy.length - 1][0], bot); c.lineTo(xy[0][0], bot); c.closePath();
+        const gr = c.createLinearGradient(0, top, 0, bot); gr.addColorStop(0, rgba(P.rgb, .38)); gr.addColorStop(1, rgba(P.rgb, 0)); c.fillStyle = gr; c.fill();
+        c.beginPath(); smooth(c, xy); c.strokeStyle = P.acc; c.lineWidth = 8; c.lineJoin = 'round'; c.lineCap = 'round'; c.stroke();
+        if (pts.length <= 16) xy.slice(0, -1).forEach(q => { c.beginPath(); c.arc(q[0], q[1], 7, 0, 7); c.fillStyle = P.acc; c.fill(); });
+      }
+      const lp = xy[xy.length - 1];
+      c.beginPath(); c.arc(lp[0], lp[1], 30, 0, 7); c.fillStyle = rgba(P.rgb, .25); c.fill();
+      c.beginPath(); c.arc(lp[0], lp[1], 15, 0, 7); c.fillStyle = P.acc; c.fill();
+      c.beginPath(); c.arc(lp[0], lp[1], 6, 0, 7); c.fillStyle = P.dot; c.fill();
+      if (showY) {
+        const lt = fv(pts[pts.length - 1].v), one = pts.length === 1; c.font = F(800, 40, HF);
+        const tw = c.measureText(lt).width, tx = one ? lp[0] : R, tl = one ? tx - tw / 2 : tx - tw, ty = lp[1] - 44;
+        rr(c, tl - 14, ty - 40, tw + 28, 58, 18); c.fillStyle = rgba([0, 0, 0], 0); c.fillStyle = P.dot; c.globalAlpha = .88; c.fill(); c.globalAlpha = 1;
+        c.fillStyle = P.ink; c.textAlign = one ? 'center' : 'right'; c.fillText(lt, tx, ty);
+        if (pts.length > 2) { c.font = F(600, 28); c.fillStyle = P.mute; c.textAlign = 'left'; c.fillText(fv(pts[0].v), L, xy[0][1] - 24); }
+      }
+      c.font = F(500, 26); c.fillStyle = P.mute; c.textAlign = 'left'; c.fillText(short(pts[0].d), L, y + h - 14);
+      if (pts.length > 1) { c.textAlign = 'right'; c.fillText(short(pts[pts.length - 1].d), R, y + h - 14); }
+    }};
+  }
+  function bBars(c, P, cw, bars, h) {
+    return {h, draw(c, x, y, cw) {
+      const n = bars.length, gap = 16, bw = (cw - gap * (n - 1)) / n, mx = Math.max(3, ...bars.map(b => b.n)), ch = h - 100;
+      bars.forEach((b, i) => {
+        const bh = b.n ? Math.max(14, b.n / mx * ch) : 8, bx = x + i * (bw + gap), by = y + 44 + (ch - bh), now = i === n - 1;
+        rr(c, bx, by, bw, bh, Math.min(14, bw / 2)); c.fillStyle = now ? P.acc : P.dim; c.fill();
+        c.textAlign = 'center';
+        if (b.n) { c.font = F(800, 30, HF); c.fillStyle = P.ink; c.fillText(String(b.n), bx + bw / 2, by - 12); }
+        c.font = F(500, 22); c.fillStyle = now ? P.ink : P.mute; c.fillText(short(b.k), bx + bw / 2, y + h - 12);
+      });
+    }};
+  }
+  function bRing(c, P, cw, frac, big, small, d) {
+    return {h: d, draw(c, x, y, cw) {
+      const cx = x + cw / 2, cy = y + d / 2, R = d / 2 - 34, lw = Math.round(d * .085);
+      c.lineWidth = lw; c.lineCap = 'round'; c.strokeStyle = P.dim; c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.stroke();
+      if (frac > 0) {
+        c.save(); c.shadowColor = rgba(P.rgb, .55); c.shadowBlur = 36; c.strokeStyle = P.acc; c.beginPath();
+        c.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, Math.max(frac, .004))); c.stroke(); c.restore();
+      }
+      c.textAlign = 'center'; c.font = F(800, d * .27, HF); ls(c, (-d * .005) + 'px'); c.fillStyle = P.ink; c.fillText(big, cx, cy + d * .06); ls(c, '0px');
+      c.font = F(500, Math.max(26, d * .062)); c.fillStyle = P.mute; c.fillText(fit(c, small, R * 1.75), cx, cy + d * .06 + d * .115);
+    }};
+  }
+  function bDots(c, P, cw, days) {
+    const r = 38;
+    return {h: 96, draw(c, x, y, cw) {
+      const step = (cw - 2 * r) / 6;
+      days.forEach((d, i) => {
+        const cx = x + r + i * step, cy = y + r + 6;
+        if (d.on) { c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fillStyle = P.acc; c.fill(); }
+        else { c.beginPath(); c.arc(cx, cy, r - 2, 0, 7); c.lineWidth = d.today ? 5 : 3; c.strokeStyle = d.today ? P.acc : P.line; c.stroke(); }
+        c.font = F(600, 30); c.textAlign = 'center'; c.fillStyle = d.on ? P.accInk : P.mute; c.fillText(d.l, cx, cy + 11);
+      });
+    }};
+  }
+
+  /* ---------- fond, en-tête, pied ---------- */
+  function drawCover(c, img, w, h) {
+    const s = Math.max(w / img.width, h / img.height), iw = img.width * s, ih = img.height * s;
+    c.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
+  }
+  function drawBg(c, w, h, th, photo) {
+    if (th === 'sticker') return;
+    if (th === 'photo' && photo) {
+      drawCover(c, photo, w, h);
+      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(0,0,0,.62)'); g.addColorStop(.35, 'rgba(0,0,0,.32)'); g.addColorStop(.65, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,.86)');
+      c.fillStyle = g; c.fillRect(0, 0, w, h); return;
+    }
+    const g = c.createLinearGradient(0, 0, w * .6, h);
+    if (th === 'fire') { g.addColorStop(0, '#ff8a3d'); g.addColorStop(.55, '#e4540a'); g.addColorStop(1, '#8f2a02'); }
+    else if (th === 'light') { g.addColorStop(0, '#f7f8fc'); g.addColorStop(1, '#e3e8f3'); }
+    else { g.addColorStop(0, '#18213d'); g.addColorStop(.6, '#0d1426'); g.addColorStop(1, '#080c18'); }
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    const glow = (x, y, r, col) => { const rg = c.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.fillRect(0, 0, w, h); };
+    if (th === 'night') { glow(w * .95, h * .08, w * .9, 'rgba(255,138,61,.30)'); glow(w * .05, h * .95, w * .8, 'rgba(70,110,255,.16)'); }
+    if (th === 'fire') { glow(w * .1, h * .05, w * .9, 'rgba(255,220,170,.35)'); glow(w * .9, h * .95, w * .8, 'rgba(60,10,0,.35)'); }
+    if (th === 'light') glow(w * .95, h * .05, w * .8, 'rgba(228,84,10,.12)');
+    c.save(); c.fillStyle = th === 'light' ? 'rgba(228,84,10,.07)' : 'rgba(255,255,255,.045)';
+    [[w * .70, 150], [w * .92, 70]].forEach(([bx, bw]) => { c.save(); c.translate(bx, h * .5); c.transform(1, 0, -.22, 1, 0, 0); rr(c, -bw / 2, -h * .58, bw, h * 1.16, 30); c.fill(); c.restore(); });
+    c.restore();
+  }
+  function drawHeader(c, P, x, y, cw, kicker, dateText) {
+    c.font = F(600, 26); ls(c, '4px'); const tw = c.measureText(kicker.toUpperCase()).width;
+    rr(c, x, y, tw + 60, 60, 30); c.fillStyle = P.acc; c.fill();
+    c.fillStyle = P.accInk; c.textAlign = 'left'; c.fillText(kicker.toUpperCase(), x + 30, y + 40); ls(c, '0px');
+    if (dateText) { c.font = F(500, 30); c.fillStyle = P.mute; c.textAlign = 'right'; c.fillText(fit(c, dateText, cw - tw - 100), x + cw, y + 40); }
+  }
+  function drawFooter(c, P, x, y, cw, name) {
+    if (name) { c.font = F(600, 34); c.fillStyle = P.ink; c.textAlign = 'left'; c.fillText(fit(c, name, cw * .5), x, y + 44); }
+    c.font = F(800, 38, HF); ls(c, '2px'); c.textAlign = 'right'; c.fillStyle = P.ink;
+    const tw = c.measureText('WEAKGYM').width; c.fillText('WEAKGYM', x + cw, y + 46); ls(c, '0px');
+    const bx = x + cw - tw - 36, by = y + 14, sk = 8;
+    c.beginPath(); c.moveTo(bx + sk, by); c.lineTo(bx + sk + 15, by); c.lineTo(bx + 15, by + 36); c.lineTo(bx, by + 36); c.closePath(); c.fillStyle = P.acc; c.fill();
+  }
+
+  /* ---------- rendu d’une carte ---------- */
+  async function renderCard(cv, card, st) {
+    const fm = FORMATS[st.fmt], P = PAL[st.theme], sticker = st.theme === 'sticker';
+    cv.width = fm.w; cv.height = fm.h;
+    const c = cv.getContext('2d'); c.clearRect(0, 0, fm.w, fm.h); c.textBaseline = 'alphabetic';
+    const cw = W - 2 * PADX, HEAD = 60, FOOT = 64, GAP = 40;
+    const padT = sticker ? 110 : fm.padT, padB = sticker ? 110 : fm.padB, areaH = fm.h - padT - padB - HEAD - FOOT - 2 * GAP;
+    let B = [], total = 0;
+    for (let lv = 0; lv < 4; lv++) {
+      B = card.build(c, P, cw, fm, st, lv);
+      total = B.reduce((s, b) => s + b.h + (b.g || 0), 0) - (B.length ? (B[B.length - 1].g || 0) : 0);
+      if (total <= areaH) break;
+    }
+    let headerY, footerY, y;
+    if (sticker) {
+      const pad = 60, stack = HEAD + GAP + total + GAP + FOOT, ph = stack + 2 * pad, py = (fm.h - ph) / 2;
+      rr(c, 30, py, fm.w - 60, ph, 56); c.fillStyle = 'rgba(10,15,29,.94)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 2; c.stroke();
+      headerY = py + pad; y = headerY + HEAD + GAP; footerY = y + total + GAP;
+    } else {
+      drawBg(c, fm.w, fm.h, st.theme, st.photo);
+      headerY = padT; footerY = fm.h - padB - FOOT;
+      const top = headerY + HEAD + GAP, area = footerY - GAP - top; y = top + Math.max(0, (area - total) / 2);
+    }
+    drawHeader(c, P, PADX, headerY, cw, card.kicker, st.opts.date ? card.dateText : '');
+    B.forEach(b => { b.draw(c, PADX, y, cw); y += b.h + (b.g || 0); });
+    drawFooter(c, P, PADX, footerY, cw, st.opts.name ? firstName() : '');
+  }
+  const firstName = () => { try { return String((myProf && myProf.name) || nm(user) || '').split(' ')[0]; } catch (e) { return ''; } };
+
+  let fontsP = null;
+  const ensureFonts = () => fontsP || (fontsP = Promise.race([
+    Promise.all(['800 100px "Bricolage Grotesque"', '700 100px "Bricolage Grotesque"', '500 30px "Instrument Sans"', '600 30px "Instrument Sans"']
+      .map(f => document.fonts.load(f, 'Aàé0123456789'))).catch(() => {}),
+    new Promise(r => setTimeout(r, 2500))
+  ]));
+
+  /* ---------- les cartes ---------- */
+  const TAGS = '#WeakGym #musculation #gym #fitness';
+  const dlong = d => new Date(d + 'T12:00').toLocaleDateString('fr-FR', {day: 'numeric', month: 'long'});
+  const sgn = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtNum(Math.abs(n));
+  const tonnes = v => v >= 1000 ? fmtNum(v / 1000) + ' t' : fmtNum(v) + ' kg';
+
+  async function session(s, mine, id) {
+    let hist = null; try { hist = await getHistory(user.uid); } catch (e) {}
+    const items = []; let vol = 0, nsets = 0, prs = 0, n = 0;
+    s.exercises.forEach((e, i) => {
+      const done = !!(mine.done && mine.done[i]);
+      let arr = mine.sets && Array.isArray(mine.sets[i]) ? mine.sets[i].map(x => String(x).trim()) : [];
+      if (!arr.some(Boolean) && mine.w && mine.w[i]) arr = [String(mine.w[i])];
+      const nums = arr.map(parseLoad).filter(x => x != null && x > 0), has = nums.length > 0;
+      if (!done && !has) return;
+      if (done) n++;
+      const reps = parseInt(e.reps) || 0;
+      if (has) nums.forEach(v => { nsets++; if (reps) vol += v * reps; }); else nsets += parseInt(e.sets) || 0;
+      const best = has ? Math.max.apply(null, nums) : null; let pr = false;
+      if (best != null && hist) {
+        const k = e.name.trim().toLowerCase(), prev = hist.entries.filter(x => x.key === k && x.id !== id && x.num != null && x.date <= s.date);
+        if (prev.length) pr = best > Math.max.apply(null, prev.map(x => x.num));
+      }
+      if (pr) prs++;
+      const plan = e.sets && e.reps ? e.sets + ' × ' + e.reps : '';
+      items.push({n: e.name, d: [plan, has ? fmtNum(best) + ' kg' : ''].filter(Boolean).join(' · '), pr});
+    });
+    const total = s.exercises.length, full = n > 0 && n === total;
+    const stats = [{v: n + '/' + total, l: 'Exercices'}, {v: String(nsets), l: 'Séries'}];
+    if (vol > 0) stats.push({v: tonnes(vol), l: 'Soulevé'});
+    open({
+      slug: 'seance', kicker: 'Séance', dateText: fmt(s.date),
+      opts: [{id: 'list', label: 'Détail des exercices', def: true}],
+      caption: st => '💪 ' + s.title + ' — ' + (full ? 'séance terminée' : n + '/' + total + ' exercices') + (vol > 0 ? ' · ' + tonnes(vol) + ' soulevés' : '') + (prs ? ' · ' + prs + ' record' + (prs > 1 ? 's' : '') + ' battu' + (prs > 1 ? 's' : '') + ' 🏆' : '') + '\n' + TAGS,
+      build(c, P, cw, fm, st, lv) {
+        const z = fm.z, B = [];
+        B.push(G(bLabel(c, P, full ? 'Séance terminée' : 'Ma séance'), 16));
+        B.push(G(bTitle(c, P, cw, s.title, {size: z.title - 14 * lv, lines: z.tl}), prs ? 30 : 40));
+        if (prs) B.push(G(bBadge(c, P, prs + ' record' + (prs > 1 ? 's' : '') + ' battu' + (prs > 1 ? 's' : ''), {solid: true}), 40));
+        B.push(G(bStats(c, P, cw, stats), 40));
+        if (st.opts.list && items.length) {
+          const rows = Math.max(1, z.rows - lv), shown = items.slice(0, items.length > rows ? rows - 1 : rows), extra = items.length - shown.length;
+          if (extra > 0) shown.push({more: '+ ' + extra + ' autre' + (extra > 1 ? 's' : '') + ' exercice' + (extra > 1 ? 's' : '')});
+          B.push(bList(c, P, cw, shown, z.rowH - 4 * lv));
+        } else B[B.length - 1].g = 0;
+        return B;
+      }
+    });
+  }
+
+  function record(g) {
+    const l = g.list, best = l.reduce((a, b) => b.num >= a.num ? b : a), first = l[0], gain = best.num - first.num;
+    const pts = l.slice(-12).map(x => ({v: x.num, d: x.date}));
+    open({
+      slug: 'record', kicker: 'Record', dateText: fmt(best.date),
+      opts: [{id: 'chart', label: 'Courbe de progression', def: l.length > 1}],
+      caption: st => '🏆 Record personnel : ' + g.name + ' — ' + fmtNum(best.num) + ' kg' + (l.length > 1 && gain > 0 ? ' (' + sgn(gain) + ' kg depuis le début)' : '') + '\n' + TAGS,
+      build(c, P, cw, fm, st, lv) {
+        const z = fm.z, B = [];
+        B.push(G(bLabel(c, P, 'Record personnel'), 16));
+        B.push(G(bTitle(c, P, cw, g.name, {size: Math.round(z.title * .78) - 8 * lv, lines: 2}), 24));
+        B.push(G(bHero(c, P, cw, fmtNum(best.num), 'kg', {size: z.hero - 34 * lv, color: P.acc}), 22));
+        B.push(G(bText(c, P, cw, 'Atteint le ' + dlong(best.date) + (l.length > 1 && gain > 0 ? ' · ' + sgn(gain) + ' kg depuis le début' : ''), {size: 34, lines: 2}), 44));
+        if (st.opts.chart && pts.length > 1) B.push(G(bSpark(c, P, cw, pts, {h: z.spark - 24 * lv, fmtV: v => fmtNum(v) + ' kg'}), 40));
+        B.push(bStats(c, P, cw, [{v: String(l.length), l: 'Séances'}, {v: fmtNum(first.num) + ' kg', l: 'Départ'}, {v: l.length > 1 ? sgn(gain) + ' kg' : '–', l: 'Progrès'}]));
+        return B;
+      }
+    });
+  }
+
+  function stats(S) {
+    open({
+      slug: 'regularite', kicker: 'Régularité', dateText: fmt(today()),
+      opts: [],
+      caption: st => '🔥 ' + S.cur + ' jour' + (S.cur > 1 ? 's' : '') + ' d’affilée · ' + S.total + ' séance' + (S.total > 1 ? 's' : '') + ' au total · ' + S.ws + ' semaine' + (S.ws > 1 ? 's' : '') + ' consécutive' + (S.ws > 1 ? 's' : '') + '\n' + TAGS,
+      build(c, P, cw, fm, st, lv) {
+        const z = fm.z, B = [];
+        B.push(G(bLabel(c, P, 'Ma régularité'), 16));
+        B.push(G(bHero(c, P, cw, String(S.cur), S.cur > 1 ? 'jours d’affilée' : 'jour d’affilée', {size: z.hero - 34 * lv, color: P.acc}), 22));
+        B.push(G(bText(c, P, cw, 'Record : ' + S.best + ' jour' + (S.best > 1 ? 's' : '') + ' · ' + S.ws + ' semaine' + (S.ws > 1 ? 's' : '') + ' d’affilée', {size: 34, lines: 2}), 44));
+        B.push(G(bBars(c, P, cw, S.bars, z.bars - 20 * lv), 40));
+        B.push(bStats(c, P, cw, [{v: String(S.week), l: 'Cette semaine'}, {v: String(S.month), l: 'Ce mois'}, {v: String(S.total), l: 'Au total'}]));
+        return B;
+      }
+    });
+  }
+
+  function weekGoal(S, done) {
+    const goal = weekGoalVal(), wk = S.week, left = Math.max(0, goal - wk), ok = wk >= goal;
+    const t = today(), d0 = new Date(t + 'T12:00'); d0.setDate(d0.getDate() - (d0.getDay() + 6) % 7);
+    const days = 'LMMJVSD'.split('').map((l, i) => { const d = new Date(d0); d.setDate(d.getDate() + i); const k = iso(d); return {l, on: done.some(x => x.date === k), today: k === t}; });
+    open({
+      slug: 'objectif-semaine', kicker: 'Objectif', dateText: 'Cette semaine',
+      opts: [],
+      caption: st => (ok ? '🎯 Objectif de la semaine atteint : ' : '🎯 Objectif de la semaine : ') + wk + '/' + goal + ' séances' + (ok ? ' ✅' : ' — encore ' + left + ' à faire !') + '\n' + TAGS,
+      build(c, P, cw, fm, st, lv) {
+        const z = fm.z, B = [];
+        B.push(G(bLabel(c, P, 'Objectif de la semaine'), 30));
+        B.push(G(bRing(c, P, cw, wk / goal, wk + '/' + goal, 'séance' + (goal > 1 ? 's' : '') + ' / semaine', z.ring - 40 * lv), 44));
+        B.push(G(bDots(c, P, cw, days), 44));
+        B.push(bBadge(c, P, ok ? 'Objectif atteint' : 'Encore ' + left + ' séance' + (left > 1 ? 's' : ''), {solid: ok}));
+        return B;
+      }
+    });
+  }
+
+  const getTarget = () => { const v = +cloudGet('wtarget'); return v >= 20 && v <= 300 ? v : null; };
+  const setTarget = v => cloudSet('wtarget', v);
+
+  function weight(rows) {
+    const last = rows[rows.length - 1], first = rows[0], diff = last.kg - first.kg, many = rows.length > 1;
+    const days = Math.round((new Date(last.date + 'T12:00') - new Date(first.date + 'T12:00')) / 864e5);
+    const span = days >= 14 ? Math.round(days / 7) + ' sem.' : days + ' j', tg = getTarget();
+    const pts = rows.slice(-24).map(r => ({v: r.kg, d: r.date}));
+    open({
+      slug: 'poids', kicker: 'Poids', dateText: fmt(last.date),
+      opts: [{id: 'hide', label: 'Masquer mon poids exact', def: false}],
+      caption: st => st.opts.hide ? '⚖️ Mon évolution : ' + (many ? sgn(diff) + ' kg depuis le ' + short(first.date) : 'c’est parti !') + '\n' + TAGS : '⚖️ Poids : ' + fmtNum(last.kg) + ' kg' + (many ? ' (' + sgn(diff) + ' kg depuis le ' + short(first.date) + ')' : '') + '\n' + TAGS,
+      build(c, P, cw, fm, st, lv) {
+        const z = fm.z, B = [], hide = st.opts.hide;
+        B.push(G(bLabel(c, P, hide ? 'Mon évolution' : 'Poids actuel'), 16));
+        B.push(G(hide ? bHero(c, P, cw, many ? sgn(diff) : '0', 'kg', {size: z.hero - 34 * lv, color: P.acc}) : bHero(c, P, cw, fmtNum(last.kg), 'kg', {size: z.hero - 34 * lv, color: P.acc}), 22));
+        B.push(G(bText(c, P, cw, many ? (hide ? 'depuis le ' + dlong(first.date) : sgn(diff) + ' kg depuis le ' + dlong(first.date)) : 'Première pesée enregistrée', {size: 34, lines: 2}), 44));
+        if (many) B.push(G(bSpark(c, P, cw, pts, {h: z.spark - 24 * lv, showY: !hide, fmtV: v => fmtNum(v) + ' kg'}), 40));
+        const sts = [{v: String(rows.length), l: 'Pesées'}, {v: many ? span : '–', l: 'Suivi'}];
+        if (!hide && tg) sts.push({v: fmtNum(tg) + ' kg', l: 'Objectif'});
+        B.push(bStats(c, P, cw, sts));
+        return B;
+      }
+    });
+  }
+
+  function weightGoal(rows) {
+    const tg = getTarget(); if (!tg || !rows.length) return;
+    const start = rows[0].kg, cur = rows[rows.length - 1].kg, tot = Math.abs(start - tg);
+    const frac = tot < .1 ? 1 : Math.min(1, Math.max(0, (start - cur) / (start - tg))), pc = Math.round(frac * 100), reach = frac >= 1;
+    const dir = tg < start ? -1 : 1;
+    open({
+      slug: 'objectif-poids', kicker: 'Objectif', dateText: fmt(rows[rows.length - 1].date),
+      opts: [{id: 'hide', label: 'Masquer mes poids exacts', def: false}],
+      caption: st => '🎯 Objectif poids : ' + pc + ' % atteint' + (reach ? ' ✅' : st.opts.hide ? '' : ' — encore ' + fmtNum(Math.abs(cur - tg)) + ' kg') + '\n' + TAGS,
+      build(c, P, cw, fm, st, lv) {
+        const z = fm.z, B = [], hide = st.opts.hide;
+        B.push(G(bLabel(c, P, 'Objectif poids'), 30));
+        B.push(G(bRing(c, P, cw, frac, pc + ' %', reach ? 'objectif atteint' : 'du chemin parcouru', z.ring - 40 * lv), 44));
+        const done = Math.max(0, dir < 0 ? start - cur : cur - start), left = Math.abs(cur - tg);
+        B.push(bStats(c, P, cw, hide
+          ? [{v: fmtNum(done) + ' kg', l: 'Déjà fait'}, {v: reach ? '0 kg' : fmtNum(left) + ' kg', l: 'Reste'}, {v: (dir < 0 ? '−' : '+') + fmtNum(tot) + ' kg', l: 'Objectif'}]
+          : [{v: fmtNum(start) + ' kg', l: 'Départ'}, {v: fmtNum(cur) + ' kg', l: 'Actuel'}, {v: fmtNum(tg) + ' kg', l: 'Objectif'}]));
+        return B;
+      }
+    });
+  }
+
+  /* ---------- interface : le studio ---------- */
+  let cleanup = null;
+  function close() { if (cleanup) { cleanup(); cleanup = null; } }
+  const canFiles = () => { try { return !!(navigator.share && navigator.canShare && navigator.canShare({files: [new File([''], 'a.png', {type: 'image/png'})]})); } catch (e) { return false; } };
+
+  function open(card) {
+    close();
+    const opener = document.activeElement, prevOv = document.body.style.overflow;
+    const th0 = cloudGet('shrTheme');
+    const st = {fmt: FORMATS[cloudGet('shrFmt')] ? cloudGet('shrFmt') : 'story', theme: PAL[th0] && th0 !== 'photo' ? th0 : 'night', photo: null, opts: {name: true, date: true}};
+    card.opts.forEach(o => { st.opts[o.id] = o.def; });
+    let edited = false; const cap0 = () => card.caption(st);
+    const el = document.createElement('div'); el.id = 'shm'; el.className = 'shm';
+    const fl = canFiles(), url = location.origin + location.pathname;
+    const toggles = [{id: 'name', label: 'Mon prénom'}, {id: 'date', label: 'La date'}].concat(card.opts);
+    el.innerHTML = `<div class="shs" role="dialog" aria-modal="true" aria-label="Partager">
+      <div class="shp"><div class="shw" id="shw"><canvas id="shc" aria-label="Aperçu de l’image à partager" role="img"></canvas></div></div>
+      <div class="shr">
+        <div class="shh"><b>Partager</b><button class="alt" id="shx" type="button" aria-label="Fermer">✕</button></div>
+        <div class="shb">
+          <div class="shl">Format</div>
+          <div class="shseg" id="shf">${Object.values(FORMATS).map(f => `<button type="button" data-f="${f.id}" aria-pressed="${f.id === st.fmt}">${f.label}<small>${f.sub}</small></button>`).join('')}</div>
+          <div class="shl">Style</div>
+          <div class="shth" id="sht">${THEMES.map(([id, n]) => `<button type="button" data-t="${id}" aria-pressed="${id === st.theme}" aria-label="Style ${n}"><i class="sw-${id}"></i>${n}</button>`).join('')}</div>
+          <div id="shph" hidden><button class="alt" type="button" id="shpb" style="width:100%;margin-top:10px">Choisir une photo de fond</button><input type="file" id="shfi" accept="image/*" hidden></div>
+          <p class="mute shn" id="shsn" hidden>PNG transparent autour de la carte : superpose-le sur ta photo ou ta vidéo (Instagram, TikTok, CapCut…).</p>
+          <div class="shl">Afficher</div>
+          <div>${toggles.map(o => `<label class="shtg"><input type="checkbox" data-o="${o.id}" ${st.opts[o.id] ? 'checked' : ''}><span class="shsw" aria-hidden="true"></span><span>${esc(o.label)}</span></label>`).join('')}</div>
+          <label for="shcap" class="shl" style="margin-top:14px">Légende</label>
+          <textarea id="shcap" rows="3" maxlength="600"></textarea>
+          <div class="shl">Envoyer le texte à</div>
+          <div class="shlk" id="shlk">
+            <a target="_blank" rel="noopener noreferrer" data-k="wa">WhatsApp</a><a target="_blank" rel="noopener noreferrer" data-k="tg">Telegram</a><a target="_blank" rel="noopener noreferrer" data-k="x">X</a><a target="_blank" rel="noopener noreferrer" data-k="fb">Facebook</a>
+          </div>
+          <p class="mute shn">${fl ? 'Instagram, TikTok, Snapchat… : touche « Partager », puis choisis l’appli dans la liste.' : 'Sur ordinateur : enregistre l’image, puis ajoute-la depuis ton téléphone (Instagram, TikTok…).'}</p>
+        </div>
+        <div class="sha">
+          <p class="shm2" id="shmsg" role="status" aria-live="polite"></p>
+          <div class="row nowrap"><button type="button" id="shgo" disabled>${fl ? 'Partager…' : 'Enregistrer l’image'}</button>${fl ? '<button type="button" class="alt" id="shdl" disabled>Enregistrer</button>' : ''}<button type="button" class="alt" id="shcp">Copier la légende</button></div>
+        </div>
+      </div></div>`;
+    document.body.appendChild(el); document.body.style.overflow = 'hidden';
+    const $q = s => el.querySelector(s), cv = $q('#shc'), msg = t => { $q('#shmsg').textContent = t; };
+    const capEl = $q('#shcap'); capEl.value = cap0();
+    capEl.oninput = () => { edited = true; links(); };
+    function links() {
+      const t = encodeURIComponent(capEl.value), u = encodeURIComponent(url);
+      const m = {wa: 'https://wa.me/?text=' + encodeURIComponent(capEl.value + '\n' + url), tg: 'https://t.me/share/url?url=' + u + '&text=' + t, x: 'https://x.com/intent/post?text=' + t + '&url=' + u, fb: 'https://www.facebook.com/sharer/sharer.php?u=' + u};
+      el.querySelectorAll('#shlk a').forEach(a => { a.href = m[a.dataset.k]; });
+    }
+    links();
+
+    let blob = null, tok = 0;
+    const fname = 'weakgym-' + card.slug + '-' + today() + '.png';
+    async function draw() {
+      const my = ++tok; blob = null; $q('#shgo').disabled = true; if ($q('#shdl')) $q('#shdl').disabled = true;
+      $q('#shw').classList.toggle('chk', st.theme === 'sticker');
+      $q('#shph').hidden = st.theme !== 'photo'; $q('#shsn').hidden = st.theme !== 'sticker';
+      await ensureFonts(); if (my !== tok) return;
+      try { await renderCard(cv, card, st); } catch (e) { msg('Aperçu impossible : ' + e.message); return; }
+      if (my !== tok) return;
+      cv.toBlob(b => { if (my !== tok) return; blob = b; $q('#shgo').disabled = !b; if ($q('#shdl')) $q('#shdl').disabled = !b; }, 'image/png');
+    }
+    function download() {
+      if (!blob) return; const u = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = u; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); msg('Image enregistrée.');
+    }
+    async function share() {
+      if (!blob) return;
+      if (!fl) return download();
+      const file = new File([blob], fname, {type: 'image/png'});
+      try { await navigator.share({files: [file], text: capEl.value}); msg(''); }
+      catch (e) { if (e && e.name !== 'AbortError') msg('Partage impossible ici : enregistre l’image puis ajoute-la dans l’appli.'); }
+    }
+    async function copy() {
+      try { await navigator.clipboard.writeText(capEl.value); msg('Légende copiée.'); }
+      catch (e) { capEl.select(); try { document.execCommand('copy'); msg('Légende copiée.'); } catch (x) { msg('Copie impossible : sélectionne le texte à la main.'); } }
+    }
+    $q('#shgo').onclick = share; $q('#shcp').onclick = copy; if ($q('#shdl')) $q('#shdl').onclick = download; $q('#shx').onclick = close;
+    el.addEventListener('click', e => { if (e.target === el) close(); });
+    $q('#shf').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; st.fmt = b.dataset.f; cloudSet('shrFmt', st.fmt); el.querySelectorAll('#shf button').forEach(x => x.setAttribute('aria-pressed', x === b)); draw(); };
+    const pick = () => $q('#shfi').click();
+    $q('#sht').onclick = e => {
+      const b = e.target.closest('[data-t]'); if (!b) return; st.theme = b.dataset.t; if (st.theme !== 'photo') cloudSet('shrTheme', st.theme);
+      el.querySelectorAll('#sht button').forEach(x => x.setAttribute('aria-pressed', x === b)); if (st.theme === 'photo' && !st.photo) pick(); draw();
+    };
+    $q('#shpb').onclick = pick;
+    $q('#shfi').onchange = e => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      if (!/^image\//.test(f.type) || f.size > 25e6) { msg('Choisis une image de moins de 25 Mo.'); return; }
+      const r = new FileReader();
+      r.onload = () => { const im = new Image(); im.onload = () => { st.photo = im; draw(); }; im.onerror = () => msg('Image illisible.'); im.src = r.result; };
+      r.readAsDataURL(f); e.target.value = '';
+    };
+    el.querySelectorAll('[data-o]').forEach(i => { i.onchange = () => { st.opts[i.dataset.o] = i.checked; if (!edited) { capEl.value = cap0(); links(); } draw(); }; });
+
+    const onKey = e => {
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if (e.key !== 'Tab') return;
+      const f = [...el.querySelectorAll('button:not([disabled]),input:not([type=hidden]):not([hidden]),textarea,a[href]')].filter(x => x.offsetParent !== null);
+      if (!f.length) return; const a = f[0], z = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+    };
+    document.addEventListener('keydown', onKey, true); addEventListener('hashchange', close);
+    cleanup = () => { document.removeEventListener('keydown', onKey, true); removeEventListener('hashchange', close); el.remove(); document.body.style.overflow = prevOv; tok++; if (opener && opener.focus) try { opener.focus(); } catch (e) {} };
+    $q('#shx').focus(); draw();
+  }
+
+  return {session, record, stats, weekGoal, weight, weightGoal, getTarget, setTarget, close, _render: renderCard, _open: open};
+})();
 </script>
 </body>
 </html>
