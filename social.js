@@ -72,7 +72,7 @@ function mountPost(p, st, onGone) {
   const el = document.createElement('div');
   el.innerHTML = `<article class="card post">
     <div class="post-h"><a class="mem" href="#/profil/${esc(p.uid)}">${av(u)}<span><b>${esc(u.name || 'Sans nom')}</b><span class="mute">${ago(p.at)}</span></span></a>
-      ${mine ? `<button class="alt pk" data-lk title="${p.hideLikes ? 'Les autres ne voient pas le nombre de j’aime' : 'Les autres voient le nombre de j’aime'}">${p.hideLikes ? SV.lockC + 'J’aime privés' : SV.lockO + 'J’aime publics'}</button><button class="del pk" data-del>Supprimer</button>` : ''}</div>
+      ${mine ? `<button class="alt pk" data-lk title="${p.hideLikes ? 'Les autres ne voient pas le nombre de j’aime' : 'Les autres voient le nombre de j’aime'}">${p.hideLikes ? SV.lockC + 'J’aime privés' : SV.lockO + 'J’aime publics'}</button>` : ''}${mine || isAdmin ? '<button class="del pk" data-del>' + (mine ? 'Supprimer' : 'Supprimer (admin)') + '</button>' : ''}</div>
     <img class="post-i" src="${p.img}" alt="Photo de ${esc(u.name || 'membre')}" loading="lazy">
     <div class="post-a"><button class="heart ${liked ? 'on' : ''}" data-like aria-pressed="${liked}" aria-label="J’aime">${SV.heart}<span class="hn">${showN ? cnt : ''}</span></button></div>
     ${p.text ? `<p class="post-t"><b>${esc(u.name || 'Sans nom')}</b>${esc(p.text)}</p>` : '<div style="height:10px"></div>'}</article>`;
@@ -93,9 +93,15 @@ function mountPost(p, st, onGone) {
       try { await POSTS().doc(p.id).update({hideLikes: !p.hideLikes}); p.hideLikes = !p.hideLikes; if (!(p.id in st.counts)) await loadCounts(st, [p]); root.parentNode.replaceChild(mountPost(p, st, onGone), root); }
       catch (x) { alert('Erreur : ' + x.message); }
     };
+  }
+  if (mine || isAdmin) {
     q('[data-del]').onclick = async () => {
-      if (!confirm('Supprimer cette publication ?')) return;
-      try { await POSTS().doc(p.id).delete(); onGone && onGone(p); } catch (x) { alert('Erreur : ' + x.message); }
+      if (!confirm(mine ? 'Supprimer cette publication ?' : 'Supprimer la publication de ' + (u.name || 'ce membre') + ' ?')) return;
+      try {
+        await POSTS().doc(p.id).delete();
+        if (isAdmin) { try { const l = await LIKES().where('post', '==', p.id).get(); const b = db.batch(); l.docs.forEach(d => b.delete(d.ref)); if (l.size) await b.commit(); } catch (e) {} }
+        onGone && onGone(p);
+      } catch (x) { alert('Erreur : ' + x.message); }
     };
   }
   return root;
