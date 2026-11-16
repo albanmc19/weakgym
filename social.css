@@ -53,3 +53,19 @@
 .ibtn .bd{position:absolute;top:-4px;right:-4px;margin:0;padding:0 5px;font-size:11px}
 .post-h button.pk{display:inline-flex;align-items:center;gap:6px}
 .post-h button.pk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* commentaires */
+.cmts{padding:4px 12px 12px;border-top:1px solid var(--line);margin-top:2px}
+.cl{display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.cm-i{display:flex;gap:10px;align-items:flex-start}
+.cm-i .av{width:30px;height:30px;font-size:14px}
+.cm-i .av.on:after{display:none}
+.cm-i p{margin:0;min-width:0;overflow-wrap:anywhere;white-space:pre-wrap;font-size:15px;line-height:1.4}
+.cm-i p a{color:inherit;text-decoration:none}
+.cm-i small{display:block;color:var(--mute);font-size:12.5px;margin-top:1px}
+.cdel{background:none;border:0;padding:0;min-height:0;color:var(--mute);font:inherit;font-size:12.5px;text-decoration:underline;cursor:pointer}
+.cdel:hover:not(:disabled){color:var(--bad);filter:none}
+.cm-f{display:flex;gap:8px;align-items:center}
+.cm-f input{flex:1;min-width:0;padding:10px 12px}
+.cm-f button{flex:none;padding:10px 16px}
+.heart.cm{margin-left:2px}
