@@ -2347,12 +2347,15 @@ async function notifCfg() {
   try { const r = await fetch('notifications.json', {cache: 'no-cache'}); NCFG = {...NDEF, ...(await r.json())}; } catch (e) { NCFG = NDEF; }
   return NCFG;
 }
+const notifTime = c => { const m = /^(\d{1,2}):(\d{2})$/.exec(myProf.notifTime || ''); return m ? [+m[1], +m[2]] : [c.reminderHour, c.reminderMinute || 0]; };
+const hhmm = a => pad(a[0]) + ':' + pad(a[1]);
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'wg-home') { location.hash = '#/'; window.scrollTo(0, 0); } });
 const pickOne = a => a[Math.floor(Math.random() * a.length)];
 const fillTpl = (t, v) => String(t).replace(/\{(\w+)\}/g, (_, k) => v[k] != null ? v[k] : '');
 async function showNotif(title, body, tag) {
-  const c = await notifCfg(), opt = {body, icon: c.icon, badge: c.icon, tag};
+  const c = await notifCfg(), opt = {body, icon: c.icon, badge: c.icon, tag, data: {url: './'}};
   try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg && reg.showNotification) return await reg.showNotification(title, opt); } catch (e) {}
-  try { new Notification(title, opt); } catch (e) {}
+  try { const n = new Notification(title, opt); n.onclick = () => { window.focus(); location.hash = '#/'; n.close(); }; } catch (e) {}
 }
 const notifLast = () => { try { return localStorage.getItem('wg_nlast'); } catch (e) { return null; } };
 async function notifCheck() {
@@ -2361,7 +2364,8 @@ async function notifCheck() {
     const c = await notifCfg(); if (!c.enabled) return;
     const now = new Date(), t = today();
     if (notifLast() === t) return;
-    if (now.getHours() * 60 + now.getMinutes() < c.reminderHour * 60 + c.reminderMinute) return;
+    const [rh, rm] = notifTime(c);
+    if (now.getHours() * 60 + now.getMinutes() < rh * 60 + rm) return;
     const first = (myProf.name || nm(user)).split(' ')[0]; let body;
     if (myProf.mode === 'perso') {
       const days = Array.isArray(myProf.notifDays) ? myProf.notifDays : c.defaultPersoDays;
@@ -2388,9 +2392,9 @@ const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.pla
 
 async function onboarding() {
   const first = (myProf.name || nm(user)).split(' ')[0], cfg = await notifCfg();
-  let mode = myProf.mode === 'perso' ? 'perso' : 'weakgym', days = (cfg.defaultPersoDays || [1, 3, 5]).slice();
+  let mode = myProf.mode === 'perso' ? 'perso' : 'weakgym', days = (cfg.defaultPersoDays || [1, 3, 5]).slice(), time = hhmm([cfg.reminderHour, cfg.reminderMinute || 0]);
   const finish = async notif => {
-    const data = {onboarded: true, mode, notif: !!notif, notifDays: days};
+    const data = {onboarded: true, mode, notif: !!notif, notifDays: days, notifTime: time};
     try { await db.collection('users').doc(user.uid).set(data, {merge: true}); } catch (e) {}
     Object.assign(myProf, data); histCache = {};
     document.body.classList.remove('onb');
@@ -2412,8 +2416,9 @@ async function onboarding() {
     const sup = 'Notification' in window, ios = isIOS() && !standalone(), sample = fillTpl(pickOne(mode === 'perso' ? cfg.persoHooks : cfg.hooks), {prenom: first, titre: 'Pecs · Triceps', n: 6});
     app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i class="on"></i></div>
       <div class="kicker">Dernière étape</div><h1>Un petit rappel, au bon moment ?</h1>
-      <p class="lead">Chaque jour de séance, WeakGym te prévient avec un petit mot de motivation, vers ${esc(cfg.reminderHour)} h.</p>
+      <p class="lead">Chaque jour de séance, WeakGym te prévient avec un petit mot de motivation, à l’heure que tu choisis.</p>
       <div class="nprev"><span class="nb">🔔</span><span><b>${esc(cfg.title)}</b><br>${esc(sample)}</span></div>
+      <label for="obt" style="margin-top:0">Heure du rappel</label><input type="time" id="obt" value="${esc(time)}">
       ${mode === 'perso' ? '<div id="obd"></div>' : ''}
       ${ios ? '<p class="mute" style="font-size:14px">Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil (Partager → Sur l’écran d’accueil), puis active les rappels depuis ton compte.</p>' : ''}
       ${!sup ? '<p class="mute">Ton navigateur ne gère pas les notifications. Tu pourras les activer plus tard depuis ton compte.</p>' : ''}
@@ -2421,6 +2426,7 @@ async function onboarding() {
       ${sup && !ios ? '<p><button type="button" id="obon" style="width:100%">Activer les notifications</button></p>' : ''}
       <p><button type="button" class="${sup && !ios ? 'alt' : ''}" id="obno" style="width:100%">${sup && !ios ? 'Plus tard' : 'Continuer'}</button></p>
       <p style="text-align:center"><button type="button" class="link" id="obback">← Retour</button></p></section>`;
+    $('#obt').onchange = e => { if (e.target.value) time = e.target.value; };
     if ($('#obd')) daysPicker($('#obd'), days, () => {});
     $('#obback').onclick = step1;
     $('#obno').onclick = () => finish(false);
@@ -2439,14 +2445,16 @@ function prefsHtml() {
   return `<h2>Préférences</h2><div class="card"><b>Mon programme</b>
     <div class="seg" id="pgm" style="margin:8px 0 6px"><a href="#" data-m="weakgym" class="${perso ? '' : 'on'}">Séances WeakGym</a><a href="#" data-m="perso" class="${perso ? 'on' : ''}">Mes séances</a></div>
     <p class="mute" style="margin:0 0 18px;font-size:14px">Avec « Mes séances », les séances WeakGym du calendrier sont masquées.</p>
-    <b>Rappels</b><p class="mute" id="nst" style="margin:4px 0 10px"></p><div id="ndays"></div><p style="margin:10px 0 0"><button id="nbtn" class="alt" type="button"></button></p></div>`;
+    <b>Rappels</b><p class="mute" id="nst" style="margin:4px 0 10px"></p><div id="ntime"></div><div id="ndays"></div><p style="margin:10px 0 0"><button id="nbtn" class="alt" type="button"></button></p></div>`;
 }
 function wirePrefs() {
   const save = d => { Object.assign(myProf, d); return db.collection('users').doc(user.uid).set(d, {merge: true}).catch(e => alert(e.message)); };
   const drawN = () => {
     const sup = 'Notification' in window, perm = sup ? Notification.permission : 'denied', on = myProf.notif === true && perm === 'granted', c = NCFG || NDEF;
-    $('#nst').textContent = !sup ? 'Ton navigateur ne gère pas les notifications. Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil.' : perm === 'denied' ? 'Notifications bloquées : autorise-les dans les réglages du navigateur.' : on ? 'Activées : un rappel vers ' + c.reminderHour + ' h les jours de séance.' : 'Désactivées.';
+    $('#nst').textContent = !sup ? 'Ton navigateur ne gère pas les notifications. Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil.' : perm === 'denied' ? 'Notifications bloquées : autorise-les dans les réglages du navigateur.' : on ? 'Activées : un rappel à ' + hhmm(notifTime(c)) + ' les jours de séance.' : 'Désactivées.';
     $('#nbtn').hidden = !sup || perm === 'denied'; $('#nbtn').textContent = on ? 'Désactiver les rappels' : 'Activer les rappels';
+    const tb = $('#ntime'); tb.innerHTML = on ? '<label for="ntm" style="margin-top:0">Heure du rappel</label><input type="time" id="ntm" value="' + hhmm(notifTime(c)) + '">' : '';
+    if (on) $('#ntm').onchange = e => { if (!e.target.value) return; try { localStorage.removeItem('wg_nlast'); } catch (x) {} save({notifTime: e.target.value}); drawN(); };
     const dd = $('#ndays'); dd.innerHTML = '';
     if (on && myProf.mode === 'perso') { const days = Array.isArray(myProf.notifDays) ? myProf.notifDays.slice() : (c.defaultPersoDays || [1, 3, 5]).slice(); daysPicker(dd, days, d => save({notifDays: d})); }
   };
