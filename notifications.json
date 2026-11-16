@@ -1,0 +1,24 @@
+{
+  "app": "WeakGym",
+  "enabled": true,
+  "title": "WeakGym 💪",
+  "icon": "apple-touch-icon.png",
+  "reminderHour": 18,
+  "reminderMinute": 0,
+  "defaultPersoDays": [1, 3, 5],
+  "hooks": [
+    "{prenom}, la séance du jour est prête. Allez, on s’y met ! 💪",
+    "Séance « {titre} » aujourd’hui. Tu vas t’en remercier.",
+    "C’est le jour de « {titre} ». Plus qu’à y aller !",
+    "{n} exercices t’attendent. Une rep après l’autre.",
+    "Ta séance est prête. Un peu de temps pour toi, c’est parti.",
+    "La régularité bat la motivation. Séance du jour : go !",
+    "Pas besoin d’être parfait, juste de commencer. Ta séance t’attend."
+  ],
+  "persoHooks": [
+    "{prenom}, c’est ton jour d’entraînement. Lance ta séance !",
+    "Ta séance t’attend. Même 20 minutes, ça compte.",
+    "Aujourd’hui, tu avances. Ouvre WeakGym et c’est parti 💪",
+    "Le plus dur, c’est de commencer. Le reste suit."
+  ]
+}
