@@ -457,6 +457,7 @@ auth.onAuthStateChanged(async u => {
     else {
       let blocked = false, fresh = false;
       try { const d = await db.collection('users').doc(u.uid).get(); blocked = d.exists && d.data().blocked === true; myProf = d.exists ? d.data() : {}; fresh = !d.exists; } catch (e) {}
+      { const lp = localPrefs(u.uid); if ((lp.prefsAt || 0) > (myProf.prefsAt || 0)) Object.assign(myProf, lp); }
       if (blocked) { flash = 'Ton accès a été suspendu par l’administrateur.'; await auth.signOut(); return; }
       user = u; try { isAdmin = (await db.collection('admins').doc(u.uid).get()).exists; } catch (e) { isAdmin = false; }
       if (!isAdmin && await devCheck(u.uid) === 'other') { user = null; flash = 'Cet appareil est déjà lié à un autre compte. Connecte-toi avec ton compte d’origine (celui de ta première connexion).'; await auth.signOut(); return; }
@@ -2401,8 +2402,7 @@ async function onboarding() {
   let mode = myProf.mode === 'perso' ? 'perso' : 'weakgym', days = (cfg.defaultPersoDays || [1, 3, 5]).slice(), time = hhmm([cfg.reminderHour, cfg.reminderMinute || 0]);
   const finish = async notif => {
     const data = {onboarded: true, mode, notif: !!notif, notifDays: days, notifTime: time};
-    try { await db.collection('users').doc(user.uid).set(data, {merge: true}); } catch (e) {}
-    Object.assign(myProf, data); histCache = {};
+    await savePrefs(data); histCache = {};
     document.body.classList.remove('onb');
     const h = mode === 'perso' ? '#/perso' : '#/';
     if ((location.hash || '#/') === h) route(); else location.hash = h;
@@ -2451,7 +2451,7 @@ function prefsHtml() {
     <b>Rappels</b><p class="mute" id="nst" style="margin:4px 0 10px"></p><div id="ntime"></div><div id="ndays"></div><p style="margin:10px 0 0"><button id="nbtn" class="alt" type="button"></button></p></div>`;
 }
 function wirePrefs() {
-  const save = d => { Object.assign(myProf, d); return db.collection('users').doc(user.uid).set(d, {merge: true}).catch(e => alert(e.message)); };
+  const save = d => savePrefs(d);
   const drawN = () => {
     const sup = 'Notification' in window, perm = sup ? Notification.permission : 'denied', on = myProf.notif === true && perm === 'granted', c = NCFG || NDEF;
     $('#nst').textContent = !sup ? 'Ton navigateur ne gère pas les notifications. Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil.' : perm === 'denied' ? 'Notifications bloquées : autorise-les dans les réglages du navigateur.' : on ? 'Activées : un rappel à ' + hhmm(notifTime(c)) + ' les jours de séance.' : 'Désactivées.';
@@ -2482,6 +2482,19 @@ function modeSwitch(box, mode, change) {
     box.firstChild.onclick = () => { mode = on ? 'perso' : 'weakgym'; draw(); change(mode); };
   };
   draw();
+}
+
+/* Préférences : écrites sur cet appareil (toujours) et dans Firestore (champ par champ). La version la plus récente gagne. */
+const LPK = uid => 'wg_prefs_' + uid;
+const localPrefs = uid => { try { const o = JSON.parse(localStorage.getItem(LPK(uid)) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+async function savePrefs(d) {
+  d = {...d, prefsAt: Date.now()};
+  Object.assign(myProf, d);
+  try { localStorage.setItem(LPK(user.uid), JSON.stringify({...localPrefs(user.uid), ...d})); } catch (e) {}
+  const ref = db.collection('users').doc(user.uid);
+  for (const k of Object.keys(d).sort((a, b) => (b === 'onboarded') - (a === 'onboarded'))) {
+    try { await ref.set({[k]: d[k]}, {merge: true}); } catch (e) { console.warn('Firestore : champ « ' + k + ' » refusé par les règles', e); }
+  }
 }
 </script>
 </body>
