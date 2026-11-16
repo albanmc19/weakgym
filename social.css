@@ -1,3 +1,4 @@
+:root{--vf:#1d8cf8}
 /* WeakGym — Social : styles (chargé par index.html) */
 .soc-top{display:flex;align-items:center;gap:10px;margin:0 0 10px}
 .soc-top h1{margin:0;margin-right:auto;font-size:clamp(28px,6vw,38px)}
@@ -69,3 +70,10 @@
 .cm-f input{flex:1;min-width:0;padding:10px 12px}
 .cm-f button{flex:none;padding:10px 16px}
 .heart.cm{margin-left:2px}
+
+/* badges */
+.vb{display:inline-flex;vertical-align:-.16em;margin-left:4px;width:1.05em;height:1.05em;flex:none}
+.vb svg{width:100%;height:100%;display:block}
+.mem b .vb{display:inline-block;vertical-align:-.16em}
+.pr-n .vb{width:.8em;height:.8em;margin-left:6px;vertical-align:-.05em}
+.chk .vb{width:22px;height:22px}
