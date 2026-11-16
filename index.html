@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#f2f4f9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0c1222" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="social.css">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -342,7 +343,7 @@ button.pill{cursor:pointer;background:color-mix(in srgb,var(--acc) 14%,transpare
 @media(max-width:600px){
  .dk{display:none}.mb{display:inline}nav a{font-size:10.5px;padding:8px 0}
  header #fab{position:static;margin-left:auto;width:42px;height:42px;min-height:42px;padding:0;font-size:0;border-radius:99px;box-shadow:none;display:grid;place-items:center;flex:none}
- header #fab:before{content:"💬";font-size:20px}
+ header #fab:before{content:"";width:22px;height:22px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z'/%3E%3C/svg%3E") center/contain no-repeat}
  #who{display:none}header #me{margin-left:0}
 }
 .ac{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.ac button{padding:7px 12px;font-size:14px}
@@ -555,7 +556,7 @@ auth.onAuthStateChanged(async u => {
   }
   $('#out').hidden = !user; watchMsgs();
   if (user && myProf.onboarded === undefined && myProf.seen === undefined && !myProf.name) myProf.onboarded = false;
-  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now()}, {merge: true}).then(() => myProf.onboarded === false ? db.collection('users').doc(user.uid).set({onboarded: false}, {merge: true}) : null).catch(() => {});
+  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now(), ...(myProf.joined ? {} : {joined: Date.parse(u.metadata && u.metadata.creationTime) || Date.now()})}, {merge: true}).then(() => myProf.onboarded === false ? db.collection('users').doc(user.uid).set({onboarded: false}, {merge: true}) : null).catch(() => {});
   beatSync(); setWho(); Promise.resolve(route()).catch(() => {}).then(hideSplash); notifCheck();
 });
 $('#out').onclick = () => { stopRest(); auth.signOut(); };
@@ -571,6 +572,7 @@ const ICO = {
   cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   dumb: '<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',
   user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>',
+  planet: '<circle cx="12" cy="12" r="5"/><g transform="translate(12 12) rotate(-22)"><path d="M-10 0A10 3.4 0 0 0 10 0"/><path d="M-10 0A10 3.4 0 0 1-3.9-3.13M3.9-3.13A10 3.4 0 0 1 10 0"/></g>',
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM21 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'
 };
 const icon = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[n]}</svg>`;
@@ -579,8 +581,8 @@ function nav() {
   try { fab(); } catch (e) {}
   document.title = (unread ? `(${unread}) ` : '') + 'WeakGym';
   const h = location.hash || '#/';
-  const l = [['#/', 'home', 'Accueil', ['#/']], ['#/calendrier', 'cal', 'Calendrier', ['#/calendrier', '#/seances', '#/seance/', '#/historique']], ['#/exercices', 'dumb', 'Exercices', ['#/exercices']], ['#/perso', 'user', '<span class="dk">Ma séance</span><span class="mb">Perso</span>', ['#/perso']], ['#/progres', 'chart', 'Progrès', ['#/progres']], ['#/musique', 'music', 'Musique', ['#/musique']], ['#/messages', 'chat', 'Messages', ['#/messages']]];
-  $('#nav').innerHTML = user ? l.map(([a, i, t, m]) => `<a href="${a}" class="${(a === '#/' ? h === '#/' : m.some(p => h.startsWith(p))) ? 'on' : ''}">${icon(i)}<span>${t}</span>${a === '#/messages' && unread ? `<span class="bd">${unread}</span>` : ''}</a>`).join('') : '';
+  const l = [['#/', 'home', 'Accueil', ['#/']], ['#/calendrier', 'cal', 'Calendrier', ['#/calendrier', '#/seances', '#/seance/', '#/historique']], ['#/exercices', 'dumb', 'Exercices', ['#/exercices']], ['#/perso', 'user', '<span class="dk">Ma séance</span><span class="mb">Perso</span>', ['#/perso']], ['#/progres', 'chart', 'Progrès', ['#/progres']], ['#/musique', 'music', 'Musique', ['#/musique']], ['#/social', 'planet', 'Social', ['#/social', '#/profil', '#/membres', '#/messages']]];
+  $('#nav').innerHTML = user ? l.map(([a, i, t, m]) => `<a href="${a}" class="${(a === '#/' ? h === '#/' : m.some(p => h.startsWith(p))) ? 'on' : ''}">${icon(i)}<span>${t}</span>${a === '#/social' && unread ? `<span class="bd">${unread}</span>` : ''}</a>`).join('') : '';
 }
 function watchMsgs() {
   if (unsub) unsub(); unsub = null; unread = 0;
@@ -804,7 +806,7 @@ async function musicPage() {
     const img = (it.album ? it.album.images : it.images) || [], who = it.artists ? it.artists.map(a => a.name).join(', ') : (it.show ? it.show.name : '');
     box.innerHTML = `<div class="card sp"><img src="${esc((img[1] || img[0] || {}).url || '')}" alt=""><div class="spi"><b>${esc(it.name)}</b><span class="mute">${esc(who)}</span><div class="bar"><i style="width:${Math.min(100, st.progress_ms / it.duration_ms * 100)}%"></i></div>
       <div class="ctl"><button class="alt" data-a="prev" aria-label="Précédent">⏮</button><button data-a="pp" aria-label="${st.is_playing ? 'Pause' : 'Lecture'}">${st.is_playing ? '⏸' : '▶'}</button><button class="alt" data-a="next" aria-label="Suivant">⏭</button>
-        <button class="${st.repeat_state && st.repeat_state !== 'off' ? '' : 'alt'}" data-a="rep" aria-label="Boucle">${st.repeat_state === 'track' ? '🔂' : '🔁'}</button>${it.type === 'track' ? '<button class="alt" id="lk" data-a="like" data-on="0" aria-label="Liker">♡</button>' : ''}</div>
+        <button class="${st.repeat_state && st.repeat_state !== 'off' ? '' : 'alt'}" data-a="rep" aria-label="Boucle">${st.repeat_state === 'track' ? '↻ 1' : '↻'}</button>${it.type === 'track' ? '<button class="alt" id="lk" data-a="like" data-on="0" aria-label="Liker">♡</button>' : ''}</div>
       <p class="vol" style="margin-top:8px">Boucle : <b>${st.repeat_state === 'track' ? 'ce titre en boucle' : st.repeat_state === 'context' ? 'playlist / album en boucle' : 'désactivée'}</b></p>
       <label class="vol" for="vol">Volume · ${esc(st.device ? st.device.name : '')}</label><input type="range" id="vol" min="0" max="100" value="${st.device ? st.device.volume_percent || 0 : 50}"></div></div>`;
     box.querySelectorAll('[data-a]').forEach(b => b.onclick = () => act(b.dataset.a));
@@ -1169,7 +1171,7 @@ async function route() {
         </div>
         <div class="lp-p" aria-hidden="true">
           <div class="pm">
-            <div class="pm-pop"><span style="font-size:22px">🔔</span><span><b>WeakGym 💪</b><br>Alex, la séance du jour est prête. Allez, on s’y met !</span></div>
+            <div class="pm-pop"><span style="display:grid;place-items:center;color:var(--acc)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span><b>WeakGym</b><br>Alex, la séance du jour est prête. Allez, on s’y met !</span></div>
             <div style="height:42px"></div>
             <div class="pm-k">Aujourd’hui</div>
             <div class="pm-h">Bonsoir, Alex</div>
@@ -1235,6 +1237,7 @@ async function route() {
     if (page === 'calendrier') return await calendarPage();
     if (page === 'activite' && isAdmin) return await activityPage(id);
     if (page === 'inscrits' && isAdmin) return await usersPage();
+    if (page === 'social') return await socialPage();
     if (page === 'profil') return await profilePage(id);
     if (page === 'membres') return await membersPage();
     if (page === 'poids') return await weightPage();
@@ -1685,7 +1688,7 @@ async function usersPage() {
 
 function notifAsk(before) {
   if (!('Notification' in window) || Notification.permission !== 'default') return;
-  const b = document.createElement('button'); b.className = 'link'; b.textContent = '🔔 Activer les notifications';
+  const b = document.createElement('button'); b.className = 'link'; b.textContent = 'Activer les notifications';
   b.onclick = () => Notification.requestPermission().then(() => b.remove()); before.before(b);
 }
 
@@ -1765,7 +1768,7 @@ async function thread(uid, nameHint) {
   ${isAdmin ? '<p><button class="link" id="delc" hidden>Supprimer la conversation</button></p>' : '<p class="mute">Écris à Alban, sa réponse apparaîtra ici en direct.</p>'}
   <div id="thr"></div>
   <div class="chips" id="qk"></div>
-  <div class="comp"><select id="att" aria-label="Joindre une séance" style="flex:none;width:68px;padding:12px 8px"><option value="">📎</option></select><textarea id="msg" rows="1" maxlength="1000" placeholder="Écrire un message…" aria-label="Message"></textarea><button id="send">Envoyer</button></div>`;
+  <div class="comp"><select id="att" aria-label="Joindre une séance" style="flex:none;width:68px;padding:12px 8px"><option value="">Joindre</option></select><textarea id="msg" rows="1" maxlength="1000" placeholder="Écrire un message…" aria-label="Message"></textarea><button id="send">Envoyer</button></div>`;
   let ms = [], first = true;
   const draw = () => {
     const box = $('#thr'); if (!box) return;
@@ -1795,7 +1798,7 @@ async function thread(uid, nameHint) {
   $('#send').onclick = send;
   notifAsk($('#thr'));
   if (!isAdmin) {
-    $('#qk').innerHTML = ['Séance terminée 💪', 'J’ai une question sur un exercice', 'Je ne peux pas venir aujourd’hui'].map(t => `<button class="alt" data-q="${esc(t)}">${esc(t)}</button>`).join('');
+    $('#qk').innerHTML = ['Séance terminée', 'J’ai une question sur un exercice', 'Je ne peux pas venir aujourd’hui'].map(t => `<button class="alt" data-q="${esc(t)}">${esc(t)}</button>`).join('');
     $('#qk').querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const ta = $('#msg'); ta.value = b.dataset.q; ta.focus(); });
   }
   all().then(l => { $('#att').insertAdjacentHTML('beforeend', l.slice(0, 40).map(x => `<option value="${esc(x.id)}">${esc(x.title)} — ${esc(short(x.date))}</option>`).join('')); }).catch(() => {});
@@ -2181,7 +2184,7 @@ const GEN = {
   str: 'Retour au calme : marche lente 3–5 min, puis étirements doux de 20–30 s par muscle, sans chercher la douleur.',
   sore: 'Les courbatures sont normales après un nouvel effort (24–72 h). Bouge doucement, hydrate-toi, dors bien. Si la douleur est vive, localisée ou dure plus de 5 jours, demande un avis médical.',
   prog: 'Pour progresser : garde une technique propre, ajoute 1 rep par série jusqu’au haut de la fourchette, puis augmente la charge de 2–5 %. Dors 7–9 h, mange assez de protéines et prévois une semaine plus légère toutes les 6–8 semaines.',
-  pain: '⚠️ Douleur vive, articulation qui « pince », engourdissement ou vertige : <b>arrête l’exercice</b>. Une brûlure musculaire est normale, pas une douleur articulaire ou dans le dos. Je ne peux pas poser de diagnostic : si ça persiste, consulte un médecin ou un kiné.'
+  pain: 'Douleur vive, articulation qui « pince », engourdissement ou vertige : <b>arrête l’exercice</b>. Une brûlure musculaire est normale, pas une douleur articulaire ou dans le dos. Je ne peux pas poser de diagnostic : si ça persiste, consulte un médecin ou un kiné.'
 };
 const INT = [['pain', /douleur|mal au|mal a |me fait mal|bless|claqu|crampe|engourdi|vertige|tendin|\bgene\b/], ['quiz', /quiz|teste|interroge/], ['err', /erreur|faute|piege|eviter|danger|mal fait/], ['musc', /muscle|travaille|cible|sollicit|sert a/], ['resp', /respir|souffle|expire|inspire/], ['var', /variante|alternative|remplac|maison|sans materiel|plus facile|plus dur|debutant/], ['load', /charge|poids|kilo|kg|lourd|leger/], ['reps', /serie|repetition|reps|volume/], ['rest', /repos|pause/], ['vid', /video|demo|montre/], ['warm', /echauff|warm/], ['str', /etire|retour au calme|stretch/], ['sore', /courbatur/], ['prog', /progress|stagne|plateau|augmenter/], ['sess', /seance|programme|aujourd/], ['tech', /comment|technique|execut|realis|position|placement|mouvement|etape|faire|explique/], ['hi', /^(salut|bonjour|hello|coucou|hey|bonsoir)/], ['ty', /merci/]];
 const kbOf = it => it.kb || LIB.find(l => slug(l.n) === slug(it.name));
@@ -2200,13 +2203,13 @@ const exChips = () => ctx.ex ? ['Technique', 'Muscles', 'Erreurs à éviter', 'R
 const li = a => a.map(x => '<li>' + esc(x) + '</li>').join('');
 async function astReply(raw) {
   const t = nz(raw);
-  if (ctx.q) { const q = ctx.q; if (q.opts.some(o => nz(o) === t)) { ctx.q = null; return {h: nz(q.ans) === t ? '✅ Bravo, c’est bien ça !' : '❌ Presque : c’est <b>' + esc(q.ans) + '</b>.', chips: exChips()}; } ctx.q = null; }
+  if (ctx.q) { const q = ctx.q; if (q.opts.some(o => nz(o) === t)) { ctx.q = null; return {h: nz(q.ans) === t ? 'Bravo, c’est bien ça !' : 'Presque : c’est <b>' + esc(q.ans) + '</b>.', chips: exChips()}; } ctx.q = null; }
   const pro = await astPro(raw, t); if (pro) return pro;
   const found = astFind(raw, ctx.items); if (found) ctx.ex = found;
   const it = found || ctx.ex, k = (INT.find(([, r]) => r.test(t)) || [])[0];
   if (k !== 'pain' && astIsData(t)) return astData(raw, t);
   if (k === 'hi') return {h: 'Salut ! Dis-moi sur quel exercice tu veux de l’aide, ou pose-moi une question.', chips: exChips()};
-  if (k === 'ty') return {h: 'Avec plaisir, bonne séance ! 💪', chips: exChips()};
+  if (k === 'ty') return {h: 'Avec plaisir, bonne séance !', chips: exChips()};
   if (k === 'pain') return {h: GEN.pain, chips: exChips()};
   if (GEN[k]) return {h: GEN[k], chips: exChips()};
   if (k === 'sess') return ctx.sess ? {h: '<p>Ta séance « ' + esc(ctx.sess.title) + ' » :</p><ul>' + ctx.sess.ex.map(x => '<li>' + esc(x.name) + (detail(x) ? ' — ' + esc(detail(x)) : '') + '</li>').join('') + '</ul>', chips: exChips()} : {h: 'Ouvre une séance (page « séance ») puis rouvre-moi : je verrai tes exercices. Sinon, choisis un exercice :', chips: exChips()};
@@ -2232,7 +2235,7 @@ mqM.addEventListener('change', placeFab);
 function fab() {
   let b = $('#fab');
   if (!user) { if (b) b.remove(); return; }
-  if (!b) { b = document.createElement('button'); b.id = 'fab'; b.type = 'button'; b.textContent = '💬 Assistant'; b.setAttribute('aria-label', 'Assistant'); b.onclick = openAst; document.body.appendChild(b); }
+  if (!b) { b = document.createElement('button'); b.id = 'fab'; b.type = 'button'; b.textContent = 'Assistant'; b.setAttribute('aria-label', 'Assistant'); b.onclick = openAst; document.body.appendChild(b); }
   placeFab();
 }
 async function openAst() {
@@ -2242,7 +2245,7 @@ async function openAst() {
   document.body.appendChild(o);
   const g = s => o.querySelector(s), close = () => { o.remove(); document.removeEventListener('keydown', kd); }, kd = e => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', kd); g('#ax').onclick = close; o.onclick = e => { if (e.target === o) close(); };
-  g('#am').onclick = e => { const sp = e.target.closest('[data-saveperso]'); if (sp && ctx.draft) { sp.disabled = true; savePerso(ctx.draft.title, ctx.draft.exercises).then(id => say('<p>✅ Séance enregistrée dans <a href="#/perso/' + esc(id) + '">Ma séance perso</a>.</p>')).catch(err => { sp.disabled = false; say('<p>' + esc(err && err.code === 'permission-denied' ? 'Enregistrement refusé : les règles Firestore doivent autoriser la collection « mysessions ».' : 'Impossible d’enregistrer pour le moment.') + '</p>'); }); return; } if (e.target.closest('[data-draft]') && ctx.draft) { try { sessionStorage.setItem('astDraft', JSON.stringify(ctx.draft)); } catch (x) {} } if (e.target.closest('a[href^="#"]')) close(); };
+  g('#am').onclick = e => { const sp = e.target.closest('[data-saveperso]'); if (sp && ctx.draft) { sp.disabled = true; savePerso(ctx.draft.title, ctx.draft.exercises).then(id => say('<p>Séance enregistrée dans <a href="#/perso/' + esc(id) + '">Ma séance perso</a>.</p>')).catch(err => { sp.disabled = false; say('<p>' + esc(err && err.code === 'permission-denied' ? 'Enregistrement refusé : les règles Firestore doivent autoriser la collection « mysessions ».' : 'Impossible d’enregistrer pour le moment.') + '</p>'); }); return; } if (e.target.closest('[data-draft]') && ctx.draft) { try { sessionStorage.setItem('astDraft', JSON.stringify(ctx.draft)); } catch (x) {} } if (e.target.closest('a[href^="#"]')) close(); };
   const say = (h, u) => { const d = document.createElement('div'); d.className = 'ab' + (u ? ' u' : ''); d.innerHTML = h; g('#am').appendChild(d); g('#am').scrollTop = 1e9; };
   const chips = a => { g('#ac').innerHTML = ''; a.forEach(([l, t]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'alt'; b.textContent = l; b.onclick = () => send(t); g('#ac').appendChild(b); }); };
   const send = async txt => { txt = String(txt || '').trim().slice(0, 200); if (!txt) return; say(esc(txt), true); g('#ai').value = ''; let r; try { r = await astReply(txt); } catch (e) { r = {h: 'Je n’ai pas pu lire tes données pour le moment.', chips: []}; } say(r.h); chips(r.chips || []); };
@@ -2361,7 +2364,7 @@ async function astPro(raw, t) {
     H.entries.filter(e => e.date < P.a && e.num != null).forEach(e => { prior[e.key] = Math.max(prior[e.key] || 0, e.num); });
     H.entries.filter(e => e.date >= P.a && e.date <= b && e.num != null && prior[e.key] != null && e.num > prior[e.key]).forEach(e => { prior[e.key] = e.num; pr.push(e); });
     const prs = [...new Map(pr.map(e => [e.key, e])).values()].slice(0, 5);
-    return O('<p>Bilan ' + esc(P.lab) + ' :</p>' + li2(['<b>' + c.s + '</b> séance' + (c.s > 1 ? 's' : '') + ' terminée' + (c.s > 1 ? 's' : '') + (p.s ? ' (' + dl(c.s, p.s) + ' vs période précédente)' : ''), '<b>' + c.ex + '</b> exercices validés', 'Tonnage estimé : <b>' + c.ton.toLocaleString('fr-FR') + ' kg</b>' + (p.ton ? ' (' + dl(c.ton, p.ton) + ')' : '')]) + (prs.length ? '<p>🏆 Nouveaux records :</p>' + li2(prs.map(e => esc(e.name) + ' : ' + N(e.num) + ' kg')) : '') + '<p class="mute">Tonnage = charges notées × reps prévues dans la séance.</p>');
+    return O('<p>Bilan ' + esc(P.lab) + ' :</p>' + li2(['<b>' + c.s + '</b> séance' + (c.s > 1 ? 's' : '') + ' terminée' + (c.s > 1 ? 's' : '') + (p.s ? ' (' + dl(c.s, p.s) + ' vs période précédente)' : ''), '<b>' + c.ex + '</b> exercices validés', 'Tonnage estimé : <b>' + c.ton.toLocaleString('fr-FR') + ' kg</b>' + (p.ton ? ' (' + dl(c.ton, p.ton) + ')' : '')]) + (prs.length ? '<p>Nouveaux records :</p>' + li2(prs.map(e => esc(e.name) + ' : ' + N(e.num) + ' kg')) : '') + '<p class="mute">Tonnage = charges notées × reps prévues dans la séance.</p>');
   }
   // 7. Équilibre musculaire
   if (/equilibre|desequilibre|repartition musc|muscles? (negliges|oublies)|poussee|push pull/.test(t)) {
@@ -2374,13 +2377,13 @@ async function astPro(raw, t) {
     if ((g('Tirage') && g('Poussée') / g('Tirage') < .6) || !g('Poussée')) tips.push('Tu pousses peu par rapport au tirage : ajoute un exercice de poussée.');
     if (g('Jambes') / tot < .2) tips.push('Les <b>jambes</b> sont sous-travaillées (moins de 20 % du volume).');
     if (!g('Tronc')) tips.push('Aucun travail du <b>tronc</b> : ajoute du gainage.');
-    return O('<p>Séries par groupe ' + esc(P.lab) + ' :</p>' + fam.map(([n, k]) => '<div>' + n + ' — <b>' + k + '</b> séries (' + Math.round(k / tot * 100) + ' %)</div><div class="bar"><i style="width:' + Math.round(k / tot * 100) + '%"></i></div>').join('') + (tips.length ? li2(tips) : '<p>✅ Ta répartition est équilibrée.</p>'));
+    return O('<p>Séries par groupe ' + esc(P.lab) + ' :</p>' + fam.map(([n, k]) => '<div>' + n + ' — <b>' + k + '</b> séries (' + Math.round(k / tot * 100) + ' %)</div><div class="bar"><i style="width:' + Math.round(k / tot * 100) + '%"></i></div>').join('') + (tips.length ? li2(tips) : '<p>Ta répartition est équilibrée.</p>'));
   }
   // 8. Série, régularité, objectif hebdo
   if (!named && /\b(serie|streak|regularite|assiduite|rythme|objectif|habitude|constance)\b/.test(t)) {
     const gm = /\b([1-7])\b.*semaine/.exec(t); if (gm && /objectif|vise|but/.test(t)) cloudSet('wgoal', +gm[1]);
     const H = await getHistory(user.uid), S = computeStats(H.done), goal = weekGoalVal(), left = Math.max(0, goal - S.week), dl = WK();
-    return O('<p>🔥 Série en cours : <b>' + S.cur + ' jour' + (S.cur > 1 ? 's' : '') + '</b> (record ' + S.best + ') · <b>' + S.ws + ' semaine' + (S.ws > 1 ? 's' : '') + '</b> d’affilée avec au moins une séance.</p><p>Objectif : <b>' + S.week + ' / ' + goal + '</b> séances cette semaine' + (left ? ' — il t’en reste ' + left + ' en ' + dl + ' jour' + (dl > 1 ? 's' : '') + (left > dl ? ' (ça fait beaucoup : ajuste ton objectif si besoin)' : '') + '.' : ' — objectif atteint, bravo ! 🎉') + '</p><p>8 dernières semaines : <span style="letter-spacing:2px">' + S.bars.map(b => '▁▂▃▄▅▆▇█'[Math.min(7, b.n)]).join('') + '</span></p><p class="mute">Pour changer l’objectif : « objectif 4 séances par semaine ».</p>');
+    return O('<p>Série en cours : <b>' + S.cur + ' jour' + (S.cur > 1 ? 's' : '') + '</b> (record ' + S.best + ') · <b>' + S.ws + ' semaine' + (S.ws > 1 ? 's' : '') + '</b> d’affilée avec au moins une séance.</p><p>Objectif : <b>' + S.week + ' / ' + goal + '</b> séances cette semaine' + (left ? ' — il t’en reste ' + left + ' en ' + dl + ' jour' + (dl > 1 ? 's' : '') + (left > dl ? ' (ça fait beaucoup : ajuste ton objectif si besoin)' : '') + '.' : ' — objectif atteint, bravo !') + '</p><p>8 dernières semaines : <span style="letter-spacing:2px">' + S.bars.map(b => '▁▂▃▄▅▆▇█'[Math.min(7, b.n)]).join('') + '</span></p><p class="mute">Pour changer l’objectif : « objectif 4 séances par semaine ».</p>');
   }
   // 9. Nutrition : protéines, calories, macros
   if (/proteine|calorie|kcal|macros?\b|nutrition|alimentation|regime|prise de masse|seche|maigrir|perdre (du|de|\d)|grossir/.test(t)) {
@@ -2405,7 +2408,7 @@ async function astPro(raw, t) {
     const chosen = new Set();
     TP[key].slice(0, n).forEach((c, i) => { let l; if (c[0] === '=') l = LIB.find(x => x.n === c.slice(1)); else { const rest = LIB.filter(x => x.c === c && !chosen.has(x.n)); l = rest[Math.floor(Math.random() * Math.min(rest.length, used[c] ? 6 : 3))]; used[c] = 1; } if (!l || chosen.has(l.n)) return; chosen.add(l.n); const sc = gl === 'endurance' ? ['3', '15–20', '45 s'] : i < 2 && gl === 'force' ? ['4', '4–6', '2 min 30'] : ['3', /Gainage/.test(l.n) ? '30–45 s' : '8–12', '1 min 30']; ex.push({name: l.n, sets: sc[0], reps: sc[1], load: '', rest: sc[2], notes: '', video: l.vid ? 'https://www.youtube.com/watch?v=' + l.vid : ''}); });
     ctx.draft = {title: 'Séance ' + LB[key] + ' — ' + gl, exercises: ex};
-    return O('<p>Séance <b>' + LB[key] + '</b> (objectif ' + gl + ', ≈ ' + mins + ' min) :</p><ol>' + ex.map(e => '<li>' + esc(e.name) + ' — ' + e.sets + ' × ' + esc(e.reps) + ', repos ' + e.rest + '</li>').join('') + '</ol>' + '<p class="row"><button data-saveperso="1">Enregistrer dans Ma séance perso</button>' + (isAdmin ? '<a class="btn alt" href="#/admin/new" data-draft="1">Séance publique (éditeur)</a>' : '') + '</p>', [chip('🔄 Une autre version', raw), ...exChips()]);
+    return O('<p>Séance <b>' + LB[key] + '</b> (objectif ' + gl + ', ≈ ' + mins + ' min) :</p><ol>' + ex.map(e => '<li>' + esc(e.name) + ' — ' + e.sets + ' × ' + esc(e.reps) + ', repos ' + e.rest + '</li>').join('') + '</ol>' + '<p class="row"><button data-saveperso="1">Enregistrer dans Ma séance perso</button>' + (isAdmin ? '<a class="btn alt" href="#/admin/new" data-draft="1">Séance publique (éditeur)</a>' : '') + '</p>', [chip('Une autre version', raw), ...exChips()]);
   }
   return null;
 }
@@ -2477,8 +2480,8 @@ async function devCheck(uid) {
 }
 
 /* ====== WeakGym : onboarding, notifications, préférences ====== */
-const NDEF = {enabled: true, title: 'WeakGym 💪', icon: 'apple-touch-icon.png', reminderHour: 18, reminderMinute: 0, defaultPersoDays: [1, 3, 5],
-  hooks: ['{prenom}, la séance du jour est prête. Allez, on s’y met ! 💪', 'Séance « {titre} » aujourd’hui. Tu vas t’en remercier.', 'C’est le jour de « {titre} ». Plus qu’à y aller !', '{n} exercices t’attendent. Une rep après l’autre.'],
+const NDEF = {enabled: true, title: 'WeakGym', icon: 'apple-touch-icon.png', reminderHour: 18, reminderMinute: 0, defaultPersoDays: [1, 3, 5],
+  hooks: ['{prenom}, la séance du jour est prête. Allez, on s’y met !', 'Séance « {titre} » aujourd’hui. Tu vas t’en remercier.', 'C’est le jour de « {titre} ». Plus qu’à y aller !', '{n} exercices t’attendent. Une rep après l’autre.'],
   persoHooks: ['{prenom}, c’est ton jour d’entraînement. Lance ta séance !', 'Ta séance t’attend. Même 20 minutes, ça compte.']};
 let NCFG = null;
 async function notifCfg() {
@@ -2554,7 +2557,7 @@ async function onboarding() {
     app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i class="on"></i></div>
       <div class="kicker">Dernière étape</div><h1>Un petit rappel, au bon moment ?</h1>
       <p class="lead">Chaque jour de séance, WeakGym te prévient avec un petit mot de motivation, à l’heure que tu choisis.</p>
-      <div class="nprev"><span class="nb">🔔</span><span><b>${esc(cfg.title)}</b><br>${esc(sample)}</span></div>
+      <div class="nprev"><span class="nb"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span><b>${esc(cfg.title)}</b><br>${esc(sample)}</span></div>
       <label for="obt" style="margin-top:0">Heure du rappel</label><input type="time" id="obt" value="${esc(time)}">
       ${mode === 'perso' ? '<div id="obd"></div>' : ''}
       ${ios ? '<p class="mute" style="font-size:14px">Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil (Partager → Sur l’écran d’accueil), puis active les rappels depuis ton compte.</p>' : ''}
@@ -2945,7 +2948,7 @@ const WGShare = (() => {
     open({
       slug: 'seance', kicker: 'Séance', dateText: fmt(s.date),
       opts: [{id: 'list', label: 'Détail des exercices', def: true}],
-      caption: st => '💪 ' + s.title + ' — ' + (full ? 'séance terminée' : n + '/' + total + ' exercices') + (vol > 0 ? ' · ' + tonnes(vol) + ' soulevés' : '') + (prs ? ' · ' + prs + ' record' + (prs > 1 ? 's' : '') + ' battu' + (prs > 1 ? 's' : '') + ' 🏆' : '') + '\n' + TAGS,
+      caption: st => '' + s.title + ' — ' + (full ? 'séance terminée' : n + '/' + total + ' exercices') + (vol > 0 ? ' · ' + tonnes(vol) + ' soulevés' : '') + (prs ? ' · ' + prs + ' record' + (prs > 1 ? 's' : '') + ' battu' + (prs > 1 ? 's' : '') + '' : '') + '\n' + TAGS,
       build(c, P, cw, fm, st, lv) {
         const z = fm.z, B = [];
         B.push(G(bLabel(c, P, full ? 'Séance terminée' : 'Ma séance'), 16));
@@ -2968,7 +2971,7 @@ const WGShare = (() => {
     open({
       slug: 'record', kicker: 'Record', dateText: fmt(best.date),
       opts: [{id: 'chart', label: 'Courbe de progression', def: l.length > 1}],
-      caption: st => '🏆 Record personnel : ' + g.name + ' — ' + fmtNum(best.num) + ' kg' + (l.length > 1 && gain > 0 ? ' (' + sgn(gain) + ' kg depuis le début)' : '') + '\n' + TAGS,
+      caption: st => 'Record personnel : ' + g.name + ' — ' + fmtNum(best.num) + ' kg' + (l.length > 1 && gain > 0 ? ' (' + sgn(gain) + ' kg depuis le début)' : '') + '\n' + TAGS,
       build(c, P, cw, fm, st, lv) {
         const z = fm.z, B = [];
         B.push(G(bLabel(c, P, 'Record personnel'), 16));
@@ -2986,7 +2989,7 @@ const WGShare = (() => {
     open({
       slug: 'regularite', kicker: 'Régularité', dateText: fmt(today()),
       opts: [],
-      caption: st => '🔥 ' + S.cur + ' jour' + (S.cur > 1 ? 's' : '') + ' d’affilée · ' + S.total + ' séance' + (S.total > 1 ? 's' : '') + ' au total · ' + S.ws + ' semaine' + (S.ws > 1 ? 's' : '') + ' consécutive' + (S.ws > 1 ? 's' : '') + '\n' + TAGS,
+      caption: st => '' + S.cur + ' jour' + (S.cur > 1 ? 's' : '') + ' d’affilée · ' + S.total + ' séance' + (S.total > 1 ? 's' : '') + ' au total · ' + S.ws + ' semaine' + (S.ws > 1 ? 's' : '') + ' consécutive' + (S.ws > 1 ? 's' : '') + '\n' + TAGS,
       build(c, P, cw, fm, st, lv) {
         const z = fm.z, B = [];
         B.push(G(bLabel(c, P, 'Ma régularité'), 16));
@@ -3006,7 +3009,7 @@ const WGShare = (() => {
     open({
       slug: 'objectif-semaine', kicker: 'Objectif', dateText: 'Cette semaine',
       opts: [],
-      caption: st => (ok ? '🎯 Objectif de la semaine atteint : ' : '🎯 Objectif de la semaine : ') + wk + '/' + goal + ' séances' + (ok ? ' ✅' : ' — encore ' + left + ' à faire !') + '\n' + TAGS,
+      caption: st => (ok ? 'Objectif de la semaine atteint : ' : 'Objectif de la semaine : ') + wk + '/' + goal + ' séances' + (ok ? '' : ' — encore ' + left + ' à faire !') + '\n' + TAGS,
       build(c, P, cw, fm, st, lv) {
         const z = fm.z, B = [];
         B.push(G(bLabel(c, P, 'Objectif de la semaine'), 30));
@@ -3029,7 +3032,7 @@ const WGShare = (() => {
     open({
       slug: 'poids', kicker: 'Poids', dateText: fmt(last.date),
       opts: [{id: 'hide', label: 'Masquer mon poids exact', def: false}],
-      caption: st => st.opts.hide ? '⚖️ Mon évolution : ' + (many ? sgn(diff) + ' kg depuis le ' + short(first.date) : 'c’est parti !') + '\n' + TAGS : '⚖️ Poids : ' + fmtNum(last.kg) + ' kg' + (many ? ' (' + sgn(diff) + ' kg depuis le ' + short(first.date) + ')' : '') + '\n' + TAGS,
+      caption: st => st.opts.hide ? 'Mon évolution : ' + (many ? sgn(diff) + ' kg depuis le ' + short(first.date) : 'c’est parti !') + '\n' + TAGS : 'Poids : ' + fmtNum(last.kg) + ' kg' + (many ? ' (' + sgn(diff) + ' kg depuis le ' + short(first.date) + ')' : '') + '\n' + TAGS,
       build(c, P, cw, fm, st, lv) {
         const z = fm.z, B = [], hide = st.opts.hide;
         B.push(G(bLabel(c, P, hide ? 'Mon évolution' : 'Poids actuel'), 16));
@@ -3052,7 +3055,7 @@ const WGShare = (() => {
     open({
       slug: 'objectif-poids', kicker: 'Objectif', dateText: fmt(rows[rows.length - 1].date),
       opts: [{id: 'hide', label: 'Masquer mes poids exacts', def: false}],
-      caption: st => '🎯 Objectif poids : ' + pc + ' % atteint' + (reach ? ' ✅' : st.opts.hide ? '' : ' — encore ' + fmtNum(Math.abs(cur - tg)) + ' kg') + '\n' + TAGS,
+      caption: st => 'Objectif poids : ' + pc + ' % atteint' + (reach ? '' : st.opts.hide ? '' : ' — encore ' + fmtNum(Math.abs(cur - tg)) + ' kg') + '\n' + TAGS,
       build(c, P, cw, fm, st, lv) {
         const z = fm.z, B = [], hide = st.opts.hide;
         B.push(G(bLabel(c, P, 'Objectif poids'), 30));
@@ -3177,5 +3180,6 @@ const WGShare = (() => {
   return {session, record, stats, weekGoal, weight, weightGoal, getTarget, setTarget, close, _render: renderCard, _open: open};
 })();
 </script>
+<script src="social.js"></script>
 </body>
 </html>
