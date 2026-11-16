@@ -406,6 +406,12 @@ button.pill{cursor:pointer;background:color-mix(in srgb,var(--acc) 14%,transpare
 @media(min-width:860px){.lp-grid{grid-template-columns:1.05fr .95fr;grid-template-areas:"a p" "f p";align-items:start}}
 .lp #emailbox{margin:0 0 10px}
 body.onb nav,body.onb #me{display:none!important}
+.sw{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:18px;padding:16px;font-weight:400;font-size:16px}
+.sw.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 8%,var(--card))}
+.sw .tx{flex:1;min-width:0}.sw b{display:block;font:700 19px var(--hf);letter-spacing:-.01em}.sw .mute{display:block;margin-top:4px;font-size:15px}
+.sw .tg{flex:none;position:relative;width:56px;height:32px;border-radius:99px;background:var(--line);transition:background .2s}
+.sw .tg:after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.sw.on .tg{background:var(--acc)}.sw.on .tg:after{transform:translateX(24px)}
 </style>
 </head>
 <body>
@@ -2406,10 +2412,9 @@ async function onboarding() {
     app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i></i></div>
       <div class="kicker">Bienvenue sur WeakGym, ${esc(first)}</div><h1>Comment veux-tu t’entraîner ?</h1>
       <p class="lead">Tu pourras changer d’avis à tout moment dans ton compte.</p>
-      <button type="button" class="opt ${mode === 'weakgym' ? 'on' : ''}" data-m="weakgym"><span class="em">📅</span><span><b>Suivre les séances WeakGym</b><span class="mute">Tu retrouves le programme proposé dans le calendrier, séance après séance.</span></span></button>
-      <button type="button" class="opt ${mode === 'perso' ? 'on' : ''}" data-m="perso"><span class="em">🛠️</span><span><b>Créer mes propres séances</b><span class="mute">Tu ne vois pas les séances WeakGym : tu construis les tiennes, avec l’aide de l’assistant.</span></span></button>
+      <div id="obm"></div>
       <p><button type="button" id="obn" style="width:100%">Continuer</button></p></section>`;
-    app.querySelectorAll('.opt').forEach(b => b.onclick = () => { mode = b.dataset.m; app.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b)); });
+    modeSwitch($('#obm'), mode, m => { mode = m; });
     $('#obn').onclick = step2;
   };
   const step2 = () => {
@@ -2442,9 +2447,7 @@ async function onboarding() {
 
 function prefsHtml() {
   const perso = myProf.mode === 'perso';
-  return `<h2>Préférences</h2><div class="card"><b>Mon programme</b>
-    <div class="seg" id="pgm" style="margin:8px 0 6px"><a href="#" data-m="weakgym" class="${perso ? '' : 'on'}">Séances WeakGym</a><a href="#" data-m="perso" class="${perso ? 'on' : ''}">Mes séances</a></div>
-    <p class="mute" style="margin:0 0 18px;font-size:14px">Avec « Mes séances », les séances WeakGym du calendrier sont masquées.</p>
+  return `<h2>Préférences</h2><div class="card"><div id="pgm"></div><div id="pgx" style="margin:10px 0 18px"></div>
     <b>Rappels</b><p class="mute" id="nst" style="margin:4px 0 10px"></p><div id="ntime"></div><div id="ndays"></div><p style="margin:10px 0 0"><button id="nbtn" class="alt" type="button"></button></p></div>`;
 }
 function wirePrefs() {
@@ -2458,7 +2461,9 @@ function wirePrefs() {
     const dd = $('#ndays'); dd.innerHTML = '';
     if (on && myProf.mode === 'perso') { const days = Array.isArray(myProf.notifDays) ? myProf.notifDays.slice() : (c.defaultPersoDays || [1, 3, 5]).slice(); daysPicker(dd, days, d => save({notifDays: d})); }
   };
-  document.querySelectorAll('#pgm a').forEach(a => a.onclick = async e => { e.preventDefault(); await save({mode: a.dataset.m}); histCache = {}; document.querySelectorAll('#pgm a').forEach(x => x.classList.toggle('on', x === a)); drawN(); });
+  const drawX = () => { $('#pgx').innerHTML = myProf.mode === 'perso' ? '<a class="btn alt" href="#/perso">Gérer mes séances</a>' : ''; };
+  modeSwitch($('#pgm'), myProf.mode === 'perso' ? 'perso' : 'weakgym', async m => { await save({mode: m}); histCache = {}; drawX(); drawN(); });
+  drawX();
   $('#nbtn').onclick = async () => {
     const on = myProf.notif === true && Notification.permission === 'granted';
     if (on) { await save({notif: false}); return drawN(); }
@@ -2467,6 +2472,16 @@ function wirePrefs() {
     drawN();
   };
   notifCfg().then(drawN); drawN();
+}
+
+/* Levier : suivre les séances WeakGym (activé) ou programme personnalisé (désactivé) */
+function modeSwitch(box, mode, change) {
+  const draw = () => {
+    const on = mode === 'weakgym';
+    box.innerHTML = `<button type="button" class="sw ${on ? 'on' : ''}" role="switch" aria-checked="${on}"><span class="tx"><b>Séances WeakGym</b><span class="mute">${on ? 'Activé : tu suis le programme WeakGym, visible dans le calendrier.' : 'Désactivé : programme personnalisé. Tu crées tes propres séances, avec l’aide de l’assistant.'}</span></span><span class="tg" aria-hidden="true"></span></button>`;
+    box.firstChild.onclick = () => { mode = on ? 'perso' : 'weakgym'; draw(); change(mode); };
+  };
+  draw();
 }
 </script>
 </body>
