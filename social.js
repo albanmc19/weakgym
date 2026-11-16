@@ -14,6 +14,28 @@ const SV = {
   chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   heart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>'
 };
+/* ---------- badges (attribués uniquement par l'admin : champ users.badges) ---------- */
+const SEAL = '<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor"/><rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" transform="rotate(45 12 12)"/>';
+const BADGES = {
+  verified: {label: 'Vérifié', color: 'var(--vf)', mark: '<path d="M8 12.3l2.7 2.7 5.5-5.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'},
+  coach: {label: 'Coach', color: 'var(--acc)', mark: '<path fill="#fff" d="M12 7.2l1.4 3 3.3.4-2.4 2.3.6 3.2-2.9-1.7-2.9 1.7.6-3.2-2.4-2.3 3.3-.4z"/>'},
+  founder: {label: 'Fondateur', color: 'var(--warn)', mark: '<path fill="#fff" d="M12 7l4 5-4 5-4-5z"/>'}
+};
+const wgBadges = u => (u && Array.isArray(u.badges) ? u.badges : []).filter(k => BADGES[k]).slice(0, 3).map(k =>
+  `<span class="vb" style="color:${BADGES[k].color}" role="img" aria-label="${BADGES[k].label}" title="${BADGES[k].label}"><svg viewBox="0 0 24 24" aria-hidden="true">${SEAL}${BADGES[k].mark}</svg></span>`).join('');
+function badgeModal(u, done) {
+  const cur = new Set(Array.isArray(u.badges) ? u.badges : []);
+  const m = sheet(`<h2 style="margin-top:0">Badges de ${esc(u.name || 'ce membre')}</h2>
+    ${Object.entries(BADGES).map(([k, b]) => `<label class="chk"><input type="checkbox" data-k="${k}" ${cur.has(k) ? 'checked' : ''}><span class="vb" style="color:${b.color};margin:0"><svg viewBox="0 0 24 24" aria-hidden="true">${SEAL}${b.mark}</svg></span>${b.label}</label>`).join('')}
+    <p id="be" class="err" hidden></p>
+    <p class="row" style="margin:16px 0 0"><button id="bs">Enregistrer</button><button class="alt" id="bx" type="button">Annuler</button></p>`);
+  m.q('#bx').onclick = m.close;
+  m.q('#bs').onclick = async () => {
+    const sel = [...m.el.querySelectorAll('[data-k]')].filter(i => i.checked).map(i => i.dataset.k), b = m.q('#bs'); b.disabled = true;
+    try { await db.collection('users').doc(u.uid).update({badges: sel.length ? sel : firebase.firestore.FieldValue.delete()}); ucache = null; m.close(); done && done(); }
+    catch (x) { m.q('#be').textContent = 'Erreur : ' + x.message; m.q('#be').hidden = false; b.disabled = false; }
+  };
+}
 const ago = ms => {
   const m = Math.round((Date.now() - ms) / 6e4);
   if (m < 1) return 'à l’instant'; if (m < 60) return `il y a ${m} min`;
@@ -74,7 +96,7 @@ function mountPost(p, st, onGone) {
   const cnt = st.counts[p.id], showN = (mine || !p.hideLikes) && cnt != null, liked = st.me.has(p.id);
   const el = document.createElement('div');
   el.innerHTML = `<article class="card post">
-    <div class="post-h"><a class="mem" href="#/profil/${esc(p.uid)}">${av(u)}<span><b>${esc(u.name || 'Sans nom')}</b><span class="mute">${ago(p.at)}</span></span></a>
+    <div class="post-h"><a class="mem" href="#/profil/${esc(p.uid)}">${av(u)}<span><b>${esc(u.name || 'Sans nom')}${wgBadges(u)}</b><span class="mute">${ago(p.at)}</span></span></a>
       ${mine ? `<button class="alt pk" data-lk title="${p.hideLikes ? 'Les autres ne voient pas le nombre de j’aime' : 'Les autres voient le nombre de j’aime'}">${p.hideLikes ? SV.lockC + 'J’aime privés' : SV.lockO + 'J’aime publics'}</button>` : ''}${mine || isAdmin ? '<button class="del pk" data-del>' + (mine ? 'Supprimer' : 'Supprimer (admin)') + '</button>' : ''}</div>
     <img class="post-i" src="${p.img}" alt="Photo de ${esc(u.name || 'membre')}" loading="lazy">
     <div class="post-a"><button class="heart ${liked ? 'on' : ''}" data-like aria-pressed="${liked}" aria-label="J’aime">${SV.heart}<span class="hn">${showN ? cnt : ''}</span></button>
@@ -98,7 +120,7 @@ function mountPost(p, st, onGone) {
   const drawC = () => {
     cbox.innerHTML = `<div class="cl">${list.length ? list.map(c => {
       const cu = st.users[c.uid] || {uid: c.uid, name: 'Ancien membre'}, can = c.uid === user.uid || mine || isAdmin;
-      return `<div class="cm-i"><a href="#/profil/${esc(c.uid)}" aria-hidden="true" tabindex="-1">${av(cu)}</a><p><a href="#/profil/${esc(c.uid)}"><b>${esc(cu.name || 'Sans nom')}</b></a> ${esc(c.text)}<small>${ago(c.at)}${can ? ` · <button class="cdel" data-cd="${esc(c.id)}">Supprimer</button>` : ''}</small></p></div>`;
+      return `<div class="cm-i"><a href="#/profil/${esc(c.uid)}" aria-hidden="true" tabindex="-1">${av(cu)}</a><p><a href="#/profil/${esc(c.uid)}"><b>${esc(cu.name || 'Sans nom')}</b>${wgBadges(cu)}</a> ${esc(c.text)}<small>${ago(c.at)}${can ? ` · <button class="cdel" data-cd="${esc(c.id)}">Supprimer</button>` : ''}</small></p></div>`;
     }).join('') : '<p class="mute small">Aucun commentaire pour le moment.</p>'}</div>
       <div class="cm-f"><input maxlength="300" placeholder="Ajouter un commentaire…" aria-label="Commentaire" autocomplete="off"><button type="button">Envoyer</button></div>`;
     cbox.querySelectorAll('[data-cd]').forEach(b => b.onclick = async () => {
@@ -261,10 +283,10 @@ async function profilePage(uid) {
   const stat = (k, n, l) => `<button data-s="${k}"><b>${n}</b><span>${l}</span></button>`;
   app.innerHTML = `${self ? '' : '<p style="margin:0"><a class="link" href="#/social" style="padding-left:0">← Social</a></p>'}
     <div class="pr">${av(u, 'xl')}<div class="pr-s">${stat('posts', posts.length, 'Publications')}${stat('followers', followers.length, 'Abonnés')}${stat('following', following.length, 'Abonnements')}</div></div>
-    <h1 class="pr-n">${esc(u.name || 'Sans nom')}</h1>
+    <h1 class="pr-n">${esc(u.name || 'Sans nom')}${wgBadges(u)}</h1>
     <p class="pr-m"><span class="${isOnline(u.seen) || self ? 'on-t' : ''}">${lastSeen(u.seen, self)}</span>${showJoined ? ` · Membre depuis ${esc(joined)}${self && u.hideJoined ? ' (masqué)' : ''}` : ''}${!self && following.some(x => x.uid === user.uid) ? ' · <b>Te suit</b>' : ''}</p>
     ${u.bio ? `<p class="bio pr-b">${esc(u.bio)}</p>` : '<div style="height:10px"></div>'}
-    <div class="pr-act">${self ? '<button id="ed" class="alt">Modifier le profil</button><button id="np">Publier</button>' : fbtn(uid, iFollow).replace('class="fb', 'id="mainf" style="min-height:46px;font-size:16px" class="fb')}</div>
+    <div class="pr-act">${self ? '<button id="ed" class="alt">Modifier le profil</button><button id="np">Publier</button>' : fbtn(uid, iFollow).replace('class="fb', 'id="mainf" style="min-height:46px;font-size:16px" class="fb')}${isAdmin ? '<button id="bg" class="alt">Badges</button>' : ''}</div>
     ${self ? `<div class="card" id="edbox" hidden>
       <label>Photo de profil</label>
       <div class="row nowrap" style="align-items:center"><span id="edav">${av(u)}</span><input id="edf" type="file" accept="image/*"><button class="alt" id="edrm" type="button" style="flex:none">Retirer</button></div>
@@ -287,6 +309,7 @@ async function profilePage(uid) {
   const open = k => k === 'posts' ? $('#pg').scrollIntoView({behavior: 'smooth'}) : k === 'followers' ? listModal('Abonnés', followers, myFol, () => profilePage(uid)) : listModal('Abonnements', following, myFol, () => profilePage(uid));
   app.querySelectorAll('[data-s]').forEach(b => b.onclick = () => open(b.dataset.s));
 
+  if ($('#bg')) $('#bg').onclick = () => badgeModal(u, () => profilePage(uid));
   if (!self) {
     let on = iFollow; const b = $('#mainf');
     b.onclick = async () => {
@@ -318,6 +341,7 @@ async function profilePage(uid) {
   };
 }
 
+window.wgBadges = wgBadges;
 window.socialPage = socialPage;
 window.membersPage = membersPage;
 window.profilePage = profilePage;
