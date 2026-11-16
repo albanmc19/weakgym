@@ -6,6 +6,49 @@
 
 const POSTS = () => db.collection('posts'), LIKES = () => db.collection('likes'), COMMENTS = () => db.collection('comments');
 const okImg = p => typeof p === 'string' && p.length < 900000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(p);
+
+/* ---------- modération : réglages ---------- */
+const MOD = {
+  block: 0.6,    // porno + hentai >= 60 %  -> photo refusée
+  review: 0.25,  // porno + hentai >= 25 %  -> publiée mais masquée en attendant l'admin
+  sexy: 0.75,    // « suggestif » >= 75 %   -> idem
+  reports: 3     // nombre de signalements qui masquent automatiquement une publication
+};
+const TF_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0/dist/tf.min.js';
+const NSFW_URL = 'https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js';
+/* mots interdits dans la légende (comparés sans accents, sans majuscules, chiffres « leet » corrigés) */
+const BAD = [/\bnazi(s|sme|ste|stes)?\b/, /\bhitler\w*/, /\bheil\b/, /\b(swastika|svastika)\b/, /\bcroix gammee\b/, /\bkkk\b/, /\bwhite power\b/,
+  /\b(goebbels|himmler|goering|mengele)\b/, /\bporn\w*/, /\bnudes?\b/];
+const BAD_FLAT = ['hitler', 'swastika', 'svastika', 'goebbels', 'himmler'];
+function badCaption(t) {
+  const n = String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[013457@$]/g, c => ({0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', '@': 'a', '$': 's'}[c])).replace(/[^a-z]+/g, ' ');
+  return BAD.some(r => r.test(n)) || BAD_FLAT.some(w => n.replace(/ /g, '').includes(w));
+}
+const loadJs = src => new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => ko(new Error('Chargement impossible : ' + src)); document.head.appendChild(s); });
+let nsfwP = null;
+function nsfwModel() {
+  if (!nsfwP) nsfwP = (async () => {
+    if (!window.tf) await loadJs(TF_URL);
+    if (!window.nsfwjs) await loadJs(NSFW_URL);
+    return await window.nsfwjs.load();
+  })().catch(e => { nsfwP = null; throw e; });
+  return nsfwP;
+}
+/* 'ok' | 'review' | 'block' ; lève une erreur si l'analyse est impossible */
+async function checkPhoto(dataUrl) {
+  const run = (async () => {
+    const model = await nsfwModel(), im = new Image(); im.src = dataUrl; await im.decode();
+    const pr = {}; (await model.classify(im)).forEach(r => { pr[r.className] = r.probability; });
+    const hard = (pr.Porn || 0) + (pr.Hentai || 0);
+    console.info('Modération photo', pr);
+    if (hard >= MOD.block) return 'block';
+    if (hard >= MOD.review || (pr.Sexy || 0) >= MOD.sexy) return 'review';
+    return 'ok';
+  })();
+  return Promise.race([run, new Promise((_, ko) => setTimeout(() => ko(new Error('Délai dépassé')), 30000))]);
+}
+const hiddenPost = p => p.review === true || (p.rep | 0) >= MOD.reports;
 const SV = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
   plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
@@ -88,7 +131,7 @@ async function loadCounts(st, list) {
     (p.uid === user.uid || !p.hideLikes) && !(p.id in st.counts) ? countBy(LIKES, p.id).then(n => { st.counts[p.id] = n; }) : null,
     !(p.id in st.cc) ? countBy(COMMENTS, p.id).then(n => { st.cc[p.id] = n; }) : null].filter(Boolean)));
 }
-const fromDocs = ds => ds.docs.map(d => ({id: d.id, ...d.data()})).filter(p => okImg(p.img));
+const fromDocs = ds => ds.docs.map(d => ({id: d.id, ...d.data()})).filter(p => okImg(p.img) && (!hiddenPost(p) || isAdmin || p.uid === user.uid));
 
 /* ---------- carte de publication ---------- */
 function mountPost(p, st, onGone) {
@@ -97,7 +140,8 @@ function mountPost(p, st, onGone) {
   const el = document.createElement('div');
   el.innerHTML = `<article class="card post">
     <div class="post-h"><a class="mem" href="#/profil/${esc(p.uid)}">${av(u)}<span><b>${esc(u.name || 'Sans nom')}${wgBadges(u)}</b><span class="mute">${ago(p.at)}</span></span></a>
-      ${mine ? `<button class="alt pk" data-lk title="${p.hideLikes ? 'Les autres ne voient pas le nombre de j’aime' : 'Les autres voient le nombre de j’aime'}">${p.hideLikes ? SV.lockC + 'J’aime privés' : SV.lockO + 'J’aime publics'}</button>` : ''}${mine || isAdmin ? '<button class="del pk" data-del>' + (mine ? 'Supprimer' : 'Supprimer (admin)') + '</button>' : ''}</div>
+      ${mine ? `<button class="alt pk" data-lk title="${p.hideLikes ? 'Les autres ne voient pas le nombre de j’aime' : 'Les autres voient le nombre de j’aime'}">${p.hideLikes ? SV.lockC + 'J’aime privés' : SV.lockO + 'J’aime publics'}</button>` : ''}${!mine ? '<button class="alt pk" data-rp>Signaler</button>' : ''}${mine || isAdmin ? '<button class="del pk" data-del>' + (mine ? 'Supprimer' : 'Supprimer (admin)') + '</button>' : ''}</div>
+    ${hiddenPost(p) ? `<div class="mod-b"><span>${isAdmin && !mine ? (p.review === true ? 'À vérifier (détection automatique)' : (p.rep | 0) + ' signalements') + ' · masquée pour les membres' : 'En vérification : seuls toi et l’administrateur la voient pour l’instant.'}</span>${isAdmin ? '<button class="alt pk" data-ok>Rétablir</button>' : ''}</div>` : ''}
     <img class="post-i" src="${p.img}" alt="Photo de ${esc(u.name || 'membre')}" loading="lazy">
     <div class="post-a"><button class="heart ${liked ? 'on' : ''}" data-like aria-pressed="${liked}" aria-label="J’aime">${SV.heart}<span class="hn">${showN ? cnt : ''}</span></button>
       <button class="heart cm" data-cm aria-expanded="false" aria-label="Commentaires">${SV.chat}<span class="hn">${st.cc[p.id] != null ? st.cc[p.id] : ''}</span></button></div>
@@ -148,6 +192,26 @@ function mountPost(p, st, onGone) {
     }
     drawC(); cbox.querySelector('input').focus();
   };
+  if (!mine) {
+    q('[data-rp]').onclick = async e => {
+      const b = e.currentTarget;
+      if (!confirm('Signaler cette photo comme inappropriée ?')) return;
+      b.disabled = true;
+      try {
+        const bt = db.batch();
+        bt.set(db.collection('reports').doc(p.id + '_' + user.uid), {post: p.id, uid: user.uid, at: Date.now()});
+        bt.update(POSTS().doc(p.id), {rep: firebase.firestore.FieldValue.increment(1)});
+        await bt.commit();
+        b.textContent = 'Signalée';
+      } catch (x) { b.textContent = 'Déjà signalée'; }
+    };
+  }
+  if (isAdmin && hiddenPost(p)) {
+    q('[data-ok]').onclick = async () => {
+      try { await POSTS().doc(p.id).update({review: false, rep: 0}); p.review = false; p.rep = 0; root.parentNode.replaceChild(mountPost(p, st, onGone), root); }
+      catch (x) { alert('Erreur : ' + x.message); }
+    };
+  }
   if (mine) {
     q('[data-lk]').onclick = async () => {
       try { await POSTS().doc(p.id).update({hideLikes: !p.hideLikes}); p.hideLikes = !p.hideLikes; if (!(p.id in st.counts)) await loadCounts(st, [p]); root.parentNode.replaceChild(mountPost(p, st, onGone), root); }
@@ -186,20 +250,35 @@ function composeModal(done) {
     <img id="cp" class="cmp-p" alt="" hidden>
     <label for="ct">Légende</label><textarea id="ct" rows="3" maxlength="300" placeholder="Ta séance, ton record, ton ressenti…"></textarea>
     <label class="chk"><input id="ch" type="checkbox"> Cacher le nombre de j’aime aux autres</label>
+    <p id="cst" class="mute small" hidden></p>
     <p id="ce" class="err" hidden></p>
     <p class="row" style="margin:16px 0 0"><button id="cs" disabled>Publier</button><button class="alt" id="cx" type="button">Annuler</button></p>`);
-  let img = '';
+  let img = '', review = false, tk = 0;
   const err = t => { const e = m.q('#ce'); e.textContent = t; e.hidden = !t; };
+  const status = t => { const e = m.q('#cst'); e.textContent = t; e.hidden = !t; };
   m.q('#cx').onclick = m.close;
   m.q('#cf').onchange = async e => {
-    err(''); img = ''; m.q('#cs').disabled = true;
-    try { img = await readPostPhoto(e.target.files[0]); const p = m.q('#cp'); p.src = img; p.hidden = false; m.q('#cs').disabled = false; }
-    catch (x) { m.q('#cp').hidden = true; err(x.message); }
+    const my = ++tk; err(''); status(''); img = ''; review = false; m.q('#cs').disabled = true; m.q('#cp').hidden = true;
+    try {
+      const data = await readPostPhoto(e.target.files[0]);
+      status('Vérification de la photo…');
+      let v; try { v = await checkPhoto(data); } catch (x) { console.warn('Modération indisponible', x); v = 'unavailable'; }
+      if (my !== tk) return;
+      status('');
+      if (v === 'block') { e.target.value = ''; err('Cette photo ne peut pas être publiée : elle semble contenir du contenu sexuel.'); return; }
+      img = data; review = !isAdmin && v !== 'ok';
+      const p = m.q('#cp'); p.src = img; p.hidden = false;
+      if (review) status(v === 'unavailable' ? 'Vérification automatique indisponible : ta photo sera visible par les autres après validation de l’administrateur.' : 'Cette photo sera visible par les autres après validation de l’administrateur.');
+      m.q('#cs').disabled = false;
+    } catch (x) { if (my !== tk) return; status(''); m.q('#cp').hidden = true; err(x.message); }
   };
   m.q('#cs').onclick = async () => {
-    if (!img) return; const b = m.q('#cs'); b.disabled = true; err('');
+    if (!img) return; const b = m.q('#cs'); err('');
+    const text = m.q('#ct').value.trim().slice(0, 300);
+    if (badCaption(text)) { err('La légende contient un mot interdit.'); return; }
+    b.disabled = true;
     try {
-      await POSTS().add({uid: user.uid, img, text: m.q('#ct').value.trim().slice(0, 300), hideLikes: m.q('#ch').checked, at: Date.now()});
+      await POSTS().add({uid: user.uid, img, text, hideLikes: m.q('#ch').checked, at: Date.now(), ...(review ? {review: true} : {})});
       m.close(); done && done();
     } catch (x) { err('Erreur : ' + x.message); b.disabled = false; }
   };
