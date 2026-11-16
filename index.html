@@ -331,7 +331,8 @@ button.pill{cursor:pointer;background:color-mix(in srgb,var(--acc) 14%,transpare
 #fab{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:60;border-radius:99px;padding:12px 18px;box-shadow:var(--sh)}
 .ast{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
 .ast>div{background:var(--bg);width:100%;max-width:640px;height:86vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;padding:0 14px calc(env(safe-area-inset-bottom,0px) + 12px)}
-.ah{display:flex;justify-content:space-between;align-items:center;padding:14px 0 6px;font:700 18px var(--hf)}.ah button{padding:6px 12px}
+.ah{display:flex;justify-content:space-between;align-items:center;padding:14px 0 6px;font:700 18px var(--hf)}.ah button{padding:6px 12px}.ahb{display:flex;gap:6px;align-items:center}.ahb button{font:600 14px 'Instrument Sans',sans-serif}
+.anote{margin:0 0 6px;font-size:12.5px;line-height:1.4;color:var(--mute)}
 .am{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
 .ab{max-width:90%;padding:10px 14px;border-radius:16px;margin:8px 0;background:var(--card);border:1px solid var(--line);font-size:15px}
 .ab.u{margin-left:auto;background:var(--acc);color:var(--acc-ink);border:0}
@@ -1652,7 +1653,7 @@ async function usersPage() {
   const purge = async us => {
     const refs = [];
     for (const u of us) {
-      refs.push(db.collection('users').doc(u.uid));
+      refs.push(db.collection('users').doc(u.uid)); refs.push(db.collection('astHistory').doc(u.uid));
       (await db.collection('logs').where('uid', '==', u.uid).get()).docs.forEach(d => refs.push(d.ref));
       try { (await db.collection('devices').where('uid', '==', u.uid).get()).docs.forEach(d => refs.push(d.ref)); } catch (e) {}
       (await db.collection('messages').where('uid', '==', u.uid).get()).docs.forEach(d => refs.push(d.ref));
@@ -2241,21 +2242,40 @@ function fab() {
 async function openAst() {
   if ($('.ast')) return;
   const o = document.createElement('div'); o.className = 'ast';
-  o.innerHTML = '<div role="dialog" aria-label="Assistant"><div class="ah"><span>Assistant séance</span><button class="alt" id="ax" type="button" aria-label="Fermer">✕</button></div><div class="am" id="am" aria-live="polite"></div><div class="ac" id="ac"></div><div class="row nowrap"><input id="ai" placeholder="Pose ta question…" maxlength="200" autocomplete="off"><button id="as" type="button" style="flex:none">Envoyer</button></div></div>';
+  o.innerHTML = '<div role="dialog" aria-label="Assistant"><div class="ah"><span>Assistant séance</span><span class="ahb"><button class="alt" id="ax" type="button" aria-label="Fermer">✕</button></span></div><p class="anote">Cet assistant est un algorithme, pas une IA : il peut parfois se tromper ou manquer de précision.</p><div class="am" id="am" aria-live="polite"></div><div class="ac" id="ac"></div><div class="row nowrap"><input id="ai" placeholder="Pose ta question…" maxlength="200" autocomplete="off"><button id="as" type="button" style="flex:none">Envoyer</button></div></div>';
   document.body.appendChild(o);
   const g = s => o.querySelector(s), close = () => { o.remove(); document.removeEventListener('keydown', kd); }, kd = e => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', kd); g('#ax').onclick = close; o.onclick = e => { if (e.target === o) close(); };
   g('#am').onclick = e => { const sp = e.target.closest('[data-saveperso]'); if (sp && ctx.draft) { sp.disabled = true; savePerso(ctx.draft.title, ctx.draft.exercises).then(id => say('<p>Séance enregistrée dans <a href="#/perso/' + esc(id) + '">Ma séance perso</a>.</p>')).catch(err => { sp.disabled = false; say('<p>' + esc(err && err.code === 'permission-denied' ? 'Enregistrement refusé : les règles Firestore doivent autoriser la collection « mysessions ».' : 'Impossible d’enregistrer pour le moment.') + '</p>'); }); return; } if (e.target.closest('[data-draft]') && ctx.draft) { try { sessionStorage.setItem('astDraft', JSON.stringify(ctx.draft)); } catch (x) {} } if (e.target.closest('a[href^="#"]')) close(); };
-  const say = (h, u) => { const d = document.createElement('div'); d.className = 'ab' + (u ? ' u' : ''); d.innerHTML = h; g('#am').appendChild(d); g('#am').scrollTop = 1e9; };
+  const HR = () => db.collection('astHistory').doc(user.uid), HK = 'wg_ast_' + user.uid;
+  const clean = a => Array.isArray(a) ? a.filter(m => m && typeof m.h === 'string' && m.h.length < 20000 && typeof m.t === 'number').slice(-60) : [];
+  let log = [];
+  // historique stocké dans Firebase (astHistory/<uid>) : il suit le compte d’un appareil à l’autre. Copie locale en secours seulement.
+  const persist = () => {
+    log = log.slice(-60);
+    if (!log.length) return;
+    HR().set({uid: user.uid, msgs: log, updatedAt: Date.now()})
+      .then(() => { try { localStorage.removeItem(HK); } catch (e) {} })
+      .catch(() => { try { localStorage.setItem(HK, JSON.stringify(log)); } catch (e) {} });
+  };
+  const loadLog = async () => {
+    let remote = false;
+    try { const d = await HR().get(); remote = true; if (d.exists) log = clean(d.data().msgs); } catch (e) {}
+    if (!log.length) { try { log = clean(JSON.parse(localStorage.getItem(HK) || '[]')); if (log.length && remote) persist(); } catch (e) {} }
+  };
+  const bubble = (h, u) => { const d = document.createElement('div'); d.className = 'ab' + (u ? ' u' : ''); d.innerHTML = h; g('#am').appendChild(d); g('#am').scrollTop = 1e9; };
+  const say = (h, u, nosave) => { bubble(h, u); if (!nosave) { log.push({h, u: u ? 1 : 0, t: Date.now()}); persist(); } };
+  const renderLog = () => { let k = ''; log.forEach(m => { const d = dayKey(m.t); if (d !== k) { k = d; const e = document.createElement('div'); e.className = 'day'; e.textContent = dayLabel(m.t); g('#am').appendChild(e); } bubble(m.h, m.u); }); };
+
   const chips = a => { g('#ac').innerHTML = ''; a.forEach(([l, t]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'alt'; b.textContent = l; b.onclick = () => send(t); g('#ac').appendChild(b); }); };
   const send = async txt => { txt = String(txt || '').trim().slice(0, 200); if (!txt) return; say(esc(txt), true); g('#ai').value = ''; let r; try { r = await astReply(txt); } catch (e) { r = {h: 'Je n’ai pas pu lire tes données pour le moment.', chips: []}; } say(r.h); chips(r.chips || []); };
   g('#as').onclick = () => send(g('#ai').value); g('#ai').onkeydown = e => { if (e.key === 'Enter') send(g('#ai').value); };
-  say('<p>Un instant…</p>');
+  say('<p>Un instant…</p>', false, true);
   ctx = {items: await astLoad(), ex: null, sess: null, q: null};
   const m = location.hash.match(/^#\/seance\/([^/?]+)/);
   if (m) { try { const d = await db.collection('sessions').doc(m[1]).get(); if (d.exists) ctx.sess = {title: d.data().title, ex: d.data().exercises || []}; } catch (e) {} }
-  g('#am').innerHTML = '';
-  say(ctx.sess ? '<p>Salut ' + esc(nm(user).split(' ')[0]) + ' ! Ta séance « ' + esc(ctx.sess.title) + ' » compte ' + ctx.sess.ex.length + ' exercice' + (ctx.sess.ex.length > 1 ? 's' : '') + '. Sur lequel veux-tu de l’aide ?</p>' : '<p>Salut ' + esc(nm(user).split(' ')[0]) + ' ! Je peux t’expliquer un mouvement, te poser des questions pour vérifier ta technique et te conseiller sur la charge. Quel exercice ?</p>');
+  await loadLog(); g('#am').innerHTML = '';
+  renderLog(); say(ctx.sess ? '<p>Salut ' + esc(nm(user).split(' ')[0]) + ' ! Ta séance « ' + esc(ctx.sess.title) + ' » compte ' + ctx.sess.ex.length + ' exercice' + (ctx.sess.ex.length > 1 ? 's' : '') + '. Sur lequel veux-tu de l’aide ?</p>' : '<p>Salut ' + esc(nm(user).split(' ')[0]) + ' ! Je peux t’expliquer un mouvement, te poser des questions pour vérifier ta technique et te conseiller sur la charge. Quel exercice ?</p>', false, true);
   let ex2 = [];
   try { const H = await getHistory(user.uid), c = {}; H.entries.forEach(e => { c[e.name] = (c[e.name] || 0) + 1; }); const top = Object.keys(c).sort((a, b) => c[b] - c[a])[0]; if (top) ex2 = [chip('Mon record ' + top), chip('Ma dernière séance'), chip('Combien de séances cette semaine ?')]; } catch (e) {}
   chips(ex2.concat(exChips(), [chip('Bilan de la semaine'), chip('Ma série'), chip('Équilibre musculaire'), chip('Que sais-tu faire ?'), chip('Teste-moi')])); g('#ai').focus();
