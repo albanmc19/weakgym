@@ -1,7 +1,7 @@
 {
-  "name": "Séances",
-  "short_name": "Séances",
-  "description": "Programme de salle de sport, suivi des exercices et messagerie.",
+  "name": "WeakGym",
+  "short_name": "WeakGym",
+  "description": "Ta séance, prête quand tu l’es : programme, suivi des exercices et rappels.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
