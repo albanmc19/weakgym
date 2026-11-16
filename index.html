@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Séances">
-<title>Séances</title>
+<meta name="apple-mobile-web-app-title" content="WeakGym">
+<title>WeakGym</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
 <style>
 :root{--bg:#f2f4f9;--card:#fff;--soft:#eaedf5;--ink:#101627;--mute:#5b6479;--line:#e0e4ee;--acc:#e4540a;--acc-ink:#fff;--ok:#0f8a5f;--warn:#b86e00;--bad:#c8352c;--r:16px;--sh:0 10px 30px -12px rgba(16,22,39,.25);--hf:'Bricolage Grotesque','Barlow Condensed',system-ui,sans-serif}
@@ -346,10 +346,70 @@ button.pill{cursor:pointer;background:color-mix(in srgb,var(--acc) 14%,transpare
  #who{display:none}header #me{margin-left:0}
 }
 .ac{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.ac button{padding:7px 12px;font-size:14px}
+
+/* ===== WeakGym : accueil, onboarding ===== */
+.lp{max-width:1040px;margin:0 auto;padding:max(3vh,14px) 2px 30px}
+.lp-top{display:flex;align-items:center;gap:10px;font:800 22px var(--hf);letter-spacing:-.01em;margin-bottom:22px}
+.lp-top:before{content:"";width:12px;height:22px;border-radius:4px;background:var(--acc);transform:skewX(-12deg)}
+.lp-grid{display:grid;gap:34px;align-items:center}
+@media(min-width:860px){.lp-grid{grid-template-columns:1.05fr .95fr;gap:56px}}
+.lp h1{font-size:clamp(54px,15vw,96px);line-height:.92;margin:6px 0 12px}
+.lp h1 em{font-style:normal;color:var(--acc)}
+.lp-tag{font:700 clamp(20px,5vw,26px)/1.2 var(--hf);letter-spacing:-.01em;margin:0 0 10px}
+.lp .lead{margin-bottom:22px}
+.lp-h{text-align:center;margin:44px 0 14px}
+.how{list-style:none;padding:0;margin:0;display:grid;gap:10px;counter-reset:s}
+@media(min-width:760px){.how{grid-template-columns:repeat(3,1fr)}}
+.how li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.how li:before{content:counter(s);flex:none;width:34px;height:34px;border-radius:50%;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;font:800 17px var(--hf)}
+.how b{display:block;font:700 19px var(--hf);letter-spacing:-.01em}.how span{color:var(--mute)}
+.lp .feat{grid-template-columns:1fr}
+@media(min-width:760px){.lp .feat{grid-template-columns:repeat(3,1fr)}}
+.lp-end{margin-top:34px;text-align:center}
+.pm{position:relative;width:min(300px,82vw);margin:22px auto 0;background:var(--bg);border:9px solid var(--ink);border-radius:42px;padding:22px 13px 16px;box-shadow:var(--sh);transform:rotate(2.5deg)}
+.pm:before{content:"";position:absolute;top:8px;left:50%;width:70px;height:6px;margin-left:-35px;border-radius:99px;background:var(--ink);opacity:.85}
+.pm-k{font-size:11px;font-weight:600;color:var(--acc)}
+.pm-h{font:800 22px/1.1 var(--hf);letter-spacing:-.02em;margin:2px 0 8px}
+.pm-card{background:color-mix(in srgb,var(--acc) 9%,var(--card));border:1px solid color-mix(in srgb,var(--acc) 45%,var(--line));border-radius:16px;padding:12px}
+.pm-t{font:800 20px/1.1 var(--hf);margin:2px 0}
+.pm-s{font-size:12px;color:var(--mute)}
+.pm-card .bar{height:7px;margin:9px 0}
+.pm-b{background:var(--acc);color:var(--acc-ink);border-radius:10px;text-align:center;font-weight:600;font-size:13px;padding:8px}
+.pm-l{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2px 12px;margin:10px 0}
+.pm-ex{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid var(--line);font-size:13px;font-weight:600}
+.pm-ex:first-child{border-top:0}
+.pm-ex .m{margin-left:auto;color:var(--mute);font-weight:500;font-size:11px;white-space:nowrap}
+.pm-c{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--soft)}
+.pm-c.ok{background:var(--acc);border-color:var(--acc)}
+.pm-ex.ok .n{text-decoration:line-through;color:var(--mute)}
+.pm-st{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pm-st div{text-align:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 2px;font-size:10px;color:var(--mute)}
+.pm-st b{display:block;font:800 20px/1 var(--hf);color:var(--ink)}
+.pm-pop{position:absolute;left:-22px;top:-20px;right:-14px;z-index:2;display:flex;gap:10px;align-items:center;background:var(--ink);color:var(--bg);border-radius:16px;padding:10px 12px;font-size:12px;line-height:1.3;box-shadow:var(--sh);transform:rotate(-2.5deg)}
+@media(max-width:380px){.pm-pop{left:-8px;right:-4px}}
+.onb #fab{display:none!important}
+.ob{max-width:520px;margin:0 auto;padding-top:max(3vh,12px)}
+.ob-dots{display:flex;gap:6px;margin-bottom:22px}.ob-dots i{flex:1;height:6px;border-radius:99px;background:var(--soft)}.ob-dots i.on{background:var(--acc)}
+.ob h1{font-size:clamp(34px,9vw,48px)}
+.opt{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:18px;padding:16px;margin:10px 0;font-weight:400;font-size:16px}
+.opt.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 8%,var(--card))}
+.opt .em{font-size:30px;line-height:1}
+.opt b{display:block;font:700 19px var(--hf);letter-spacing:-.01em}
+.opt .mute{display:block;margin-top:4px;font-size:15px}
+.nprev{display:flex;gap:12px;align-items:center;background:var(--ink);color:var(--bg);border-radius:18px;padding:14px 16px;margin:16px 0;box-shadow:var(--sh)}
+.nprev .nb{font-size:26px}.nprev span{font-size:14px;opacity:.85}
+.dc{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.dc button{background:var(--soft);color:var(--ink);min-height:42px;padding:6px 14px;border-radius:99px;font-size:15px}
+.dc button.on{background:var(--acc);color:var(--acc-ink)}
+.lp-a{grid-area:a}.lp-p{grid-area:p}.lp-f{grid-area:f}
+.lp-grid{grid-template-areas:"a" "p" "f"}
+@media(min-width:860px){.lp-grid{grid-template-columns:1.05fr .95fr;grid-template-areas:"a p" "f p";align-items:start}}
+.lp #emailbox{margin:0 0 10px}
+body.onb nav,body.onb #me{display:none!important}
 </style>
 </head>
 <body>
-<header><b>SÉANCES</b><nav id="nav"></nav><span id="who" class="mute"></span><a id="me" href="#/plus" hidden aria-label="Mon compte"></a><button class="alt" id="out" hidden>Quitter</button></header>
+<header><b>WEAKGYM</b><nav id="nav"></nav><span id="who" class="mute"></span><a id="me" href="#/plus" hidden aria-label="Mon compte"></a><button class="alt" id="out" hidden>Quitter</button></header>
 <main id="app"></main>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -389,16 +449,17 @@ auth.onAuthStateChanged(async u => {
   if (u) {
     if (!u.emailVerified) pending = u;
     else {
-      let blocked = false;
-      try { const d = await db.collection('users').doc(u.uid).get(); blocked = d.exists && d.data().blocked === true; myProf = d.exists ? d.data() : {}; } catch (e) {}
+      let blocked = false, fresh = false;
+      try { const d = await db.collection('users').doc(u.uid).get(); blocked = d.exists && d.data().blocked === true; myProf = d.exists ? d.data() : {}; fresh = !d.exists; } catch (e) {}
       if (blocked) { flash = 'Ton accès a été suspendu par l’administrateur.'; await auth.signOut(); return; }
       user = u; try { isAdmin = (await db.collection('admins').doc(u.uid).get()).exists; } catch (e) { isAdmin = false; }
       if (!isAdmin && await devCheck(u.uid) === 'other') { user = null; flash = 'Cet appareil est déjà lié à un autre compte. Connecte-toi avec ton compte d’origine (celui de ta première connexion).'; await auth.signOut(); return; }
     }
   }
   $('#out').hidden = !user; watchMsgs();
-  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now()}, {merge: true}).catch(() => {});
-  beatSync(); setWho(); route();
+  if (user && myProf.onboarded === undefined && myProf.seen === undefined && !myProf.name) myProf.onboarded = false;
+  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now(), ...(myProf.onboarded === false ? {onboarded: false} : {})}, {merge: true}).catch(() => {});
+  beatSync(); setWho(); route(); notifCheck();
 });
 $('#out').onclick = () => { stopRest(); auth.signOut(); };
 addEventListener('hashchange', route);
@@ -419,7 +480,7 @@ const icon = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="curre
 let unread = 0, unsub = null, pageUnsub = null;
 function nav() {
   try { fab(); } catch (e) {}
-  document.title = (unread ? `(${unread}) ` : '') + 'Séances';
+  document.title = (unread ? `(${unread}) ` : '') + 'WeakGym';
   const h = location.hash || '#/';
   const l = [['#/', 'home', 'Accueil', ['#/']], ['#/calendrier', 'cal', 'Calendrier', ['#/calendrier', '#/seances', '#/seance/', '#/historique']], ['#/exercices', 'dumb', 'Exercices', ['#/exercices']], ['#/perso', 'user', '<span class="dk">Ma séance</span><span class="mb">Perso</span>', ['#/perso']], ['#/progres', 'chart', 'Progrès', ['#/progres']], ['#/musique', 'music', 'Musique', ['#/musique']], ['#/messages', 'chat', 'Messages', ['#/messages']]];
   $('#nav').innerHTML = user ? l.map(([a, i, t, m]) => `<a href="${a}" class="${(a === '#/' ? h === '#/' : m.some(p => h.startsWith(p))) ? 'on' : ''}">${icon(i)}<span>${t}</span>${a === '#/messages' && unread ? `<span class="bd">${unread}</span>` : ''}</a>`).join('') : '';
@@ -431,7 +492,7 @@ function watchMsgs() {
   unsub = q.onSnapshot(sn => {
     const prevU = unread; unread = sn.docs.filter(d => { const m = d.data(); return isAdmin ? m.from === 'user' && !m.readByAdmin : m.from === 'admin' && !m.readByUser; }).length;
     nav();
-    if (unread > prevU && document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification('Séances', {body: isAdmin ? 'Nouveau message d’un inscrit' : 'Nouveau message d’Alban'}); } catch (e) {} }
+    if (unread > prevU && document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification('WeakGym', {body: isAdmin ? 'Nouveau message d’un inscrit' : 'Nouveau message d’Alban'}); } catch (e) {} }
   }, () => {});
 }
 
@@ -739,8 +800,9 @@ async function plusPage() {
   app.innerHTML = `<h1>${esc(nm(user))}</h1><p class="mute">${esc(user.email)}${isAdmin ? ' · administrateur' : ''}</p>
   ${row('#/profil', 'Mon profil', 'Photo, abonnés, statut')}${row('#/poids', 'Mon poids', 'Suivi et import Basic-Fit')}${row('#/membres', 'Membres', 'Trouver et suivre des personnes')}
   ${isAdmin ? '<h2>Administration</h2>' + row('#/activite', 'Activité', 'Ce que font les inscrits') + row('#/admin', 'Gérer les séances', 'Créer, modifier, copier') + row('#/inscrits', 'Inscrits', 'Bloquer, supprimer, écrire') : ''}
-  <h2>Compte</h2><button id="lo" class="alt" style="width:100%">Se déconnecter</button>`;
+  ${prefsHtml()}<h2>Compte</h2><button id="lo" class="alt" style="width:100%">Se déconnecter</button>`;
   $('#lo').onclick = () => { stopRest(); auth.signOut(); };
+  wirePrefs();
 }
 
 
@@ -993,32 +1055,65 @@ async function route() {
   if (wl) { wl.release().catch(() => {}); wl = null; }
   nav(); app.classList.remove('wide');
   document.body.classList.toggle('out', !user);
+  document.body.classList.toggle('onb', !!user && myProf.onboarded === false);
   if (!user && pending) return verifyScreen();
   if (!user) {
-    app.innerHTML = `<section class="hero">
-      <svg class="bell" viewBox="0 0 96 40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" aria-hidden="true"><path d="M30 20h36M14 8v24M22 3v34M74 3v34M82 8v24M6 15v10M90 15v10"/></svg>
-      <div class="kicker">Salle de sport · suivi à deux</div>
-      <h1>Ta séance, prête quand tu l’es.</h1>
-      <p class="lead">Retrouve le programme du jour, coche chaque exercice fait, note tes charges et écris directement à ton partenaire d’entraînement.</p>
-      <button id="g" class="gbtn"><svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>Continuer avec Google</span></button>
-      <p class="fine">Connexion sécurisée par Google, sans mot de passe à retenir.</p>
-      <div class="or"><span>ou avec ton e-mail</span></div>
-      <div class="card" id="emailbox">
-        <div class="seg" id="emmode" style="margin-top:0"><a href="#" data-m="in" class="on">Se connecter</a><a href="#" data-m="up">Créer un compte</a></div>
-        <div id="emname" hidden><label for="emn">Prénom</label><input id="emn" autocomplete="given-name" placeholder="Pour t’afficher aux autres"></div>
-        <label for="emm">E-mail</label><input id="emm" type="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="toi@exemple.com">
-        <label for="emp">Mot de passe</label>
-        <div class="pw"><input id="emp" type="password" autocomplete="current-password" placeholder="10 caractères minimum"><button type="button" class="alt" id="emshow">Voir</button></div>
-        <p id="emerr" class="err" role="alert" hidden></p><p id="emok" class="tag" hidden></p>
-        <p style="margin:14px 0 0"><button id="emgo" style="width:100%">Se connecter</button></p>
-        <p style="margin:6px 0 0;text-align:center"><button class="link" id="emreset" type="button">Mot de passe oublié ?</button></p>
+    app.innerHTML = `<section class="lp">
+      <div class="lp-top">WEAKGYM</div>
+      <div class="lp-grid">
+        <div class="lp-a">
+          <div class="kicker">Ton coach de poche · 100 % gratuit</div>
+          <h1>Weak<em>Gym</em></h1>
+          <p class="lp-tag">Ta séance, prête quand tu l’es.</p>
+          <p class="lead">Retrouve le programme du jour, coche chaque exercice, note tes charges et regarde tes progrès grimper semaine après semaine. Ou crée tes propres séances avec l’assistant.</p>
+          <button id="g" class="gbtn"><svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>Continuer avec Google</span></button>
+          <p class="fine">Inscription en 10 secondes, sans mot de passe à retenir.</p>
+        </div>
+        <div class="lp-p" aria-hidden="true">
+          <div class="pm">
+            <div class="pm-pop"><span style="font-size:22px">🔔</span><span><b>WeakGym 💪</b><br>Alex, la séance du jour est prête. Allez, on s’y met !</span></div>
+            <div style="height:42px"></div>
+            <div class="pm-k">Aujourd’hui</div>
+            <div class="pm-h">Bonsoir, Alex</div>
+            <div class="pm-card"><div class="pm-k">Séance du jour</div><div class="pm-t">Pecs · Triceps</div><div class="pm-s">6 exercices</div><div class="bar"><i style="width:50%"></i></div><div class="pm-b">Reprendre</div></div>
+            <div class="pm-l">
+              <div class="pm-ex ok"><span class="pm-c ok"></span><span class="n">Développé couché</span><span class="m">4 × 10</span></div>
+              <div class="pm-ex ok"><span class="pm-c ok"></span><span class="n">Pec fly banc</span><span class="m">3 × 12</span></div>
+              <div class="pm-ex"><span class="pm-c"></span><span class="n">Dips</span><span class="m">3 × 10</span></div>
+            </div>
+            <div class="pm-st"><div><b>3</b>Cette semaine</div><div><b>5</b>Jours d’affilée</div><div><b>28</b>Au total</div></div>
+          </div>
+        </div>
+        <div class="lp-f">
+          <div class="or"><span>ou avec ton e-mail</span></div>
+          <div class="card" id="emailbox">
+            <div class="seg" id="emmode" style="margin-top:0"><a href="#" data-m="in" class="on">Se connecter</a><a href="#" data-m="up">Créer un compte</a></div>
+            <div id="emname" hidden><label for="emn">Prénom</label><input id="emn" autocomplete="given-name" placeholder="Pour t’afficher aux autres"></div>
+            <label for="emm">E-mail</label><input id="emm" type="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="toi@exemple.com">
+            <label for="emp">Mot de passe</label>
+            <div class="pw"><input id="emp" type="password" autocomplete="current-password" placeholder="10 caractères minimum"><button type="button" class="alt" id="emshow">Voir</button></div>
+            <p id="emerr" class="err" role="alert" hidden></p><p id="emok" class="tag" hidden></p>
+            <p style="margin:14px 0 0"><button id="emgo" style="width:100%">Se connecter</button></p>
+            <p style="margin:6px 0 0;text-align:center"><button class="link" id="emreset" type="button">Mot de passe oublié ?</button></p>
+          </div>
+        </div>
       </div>
+      <h2 class="lp-h">Comment ça marche</h2>
+      <ol class="how">
+        <li><span><b>Crée ton compte</b><span>Avec Google ou ton e-mail, en quelques secondes.</span></span></li>
+        <li><span><b>Choisis ton programme</b><span>Suis les séances WeakGym ou construis les tiennes avec l’assistant.</span></span></li>
+        <li><span><b>Entraîne-toi, progresse</b><span>Coche, note tes charges, reçois ton rappel du jour.</span></span></li>
+      </ol>
+      <h2 class="lp-h">Tout ce qu’il te faut</h2>
       <ul class="feat">
-        <li><b>La séance du jour</b><span>Elle s’ouvre dès la connexion, avec les vidéos d’exécution.</span></li>
-        <li><b>Un suivi honnête</b><span>Tu coches ce que tu as vraiment fait et la charge utilisée.</span></li>
-        <li><b>Une messagerie intégrée</b><span>Une question sur un exercice ? Écris, la réponse arrive ici.</span></li>
-      </ul></section>`;
+        <li><b>La séance du jour</b><span>Elle t’attend dès la connexion, avec les vidéos d’exécution.</span></li>
+        <li><b>Un suivi honnête</b><span>Charges par série, records, séries de jours et courbes de progrès.</span></li>
+        <li><b>Un assistant intégré</b><span>Explique les mouvements, calcule ton 1RM et génère tes séances.</span></li>
+      </ul>
+      <div class="lp-end"><h2 style="margin:0 0 12px">Prêt à t’y mettre ?</h2><button id="lpup" style="width:100%;max-width:360px">Créer mon compte gratuit</button></div>
+    </section>`;
     wireEmail();
+    $('#lpup').onclick = () => { document.querySelector('#emmode a[data-m="up"]').click(); $('#emailbox').scrollIntoView({behavior: 'smooth', block: 'center'}); };
     if (flash) { const e = $('#emerr'); e.textContent = flash; e.hidden = false; flash = ''; }
     $('#g').onclick = async () => {
       const btn = $('#g'), p = new firebase.auth.GoogleAuthProvider();
@@ -1032,6 +1127,7 @@ async function route() {
     };
     return;
   }
+  if (myProf.onboarded === false) return onboarding();
   const [, page, id, extra] = (location.hash || '#/').split('/');
   try {
     if (page === 'perso') return await persoPage(id);
@@ -1055,6 +1151,7 @@ async function route() {
 }
 
 async function all() {
+  if (!isAdmin && myProf.mode === 'perso') return [];
   const s = await db.collection('sessions').orderBy('date', 'desc').get();
   return s.docs.map(d => ({id: d.id, ...d.data()}));
 }
@@ -1071,7 +1168,7 @@ async function home() {
   const first = (myProf.name || nm(user)).split(' ')[0], h = new Date().getHours();
   const hello = h < 5 || h >= 18 ? 'Bonsoir' : h < 12 ? 'Bonjour' : 'Bon après-midi';
   const dn = s && hist ? hist.done.find(d => d.id === s.id) : null, fin = !!(dn && dn.total && dn.n >= dn.total);
-  let msg = !s ? 'Aucune séance de prévue pour le moment.'
+  let msg = !s ? (myProf.mode === 'perso' ? 'Prêt à t’entraîner à ta façon ?' : 'Aucune séance de prévue pour le moment.')
     : s.date === t ? (fin ? 'Séance du jour terminée, bien joué.' : dn ? `Séance en cours : ${dn.n}/${dn.total} exercices faits.` : 'Ta séance du jour est prête.')
     : s.date > t ? `Prochaine séance : ${fmt(s.date)}.` : 'Voici ta dernière séance.';
   if (st && st.cur >= 2) msg += ` ${st.cur} jours d’affilée, continue.`;
@@ -1079,7 +1176,7 @@ async function home() {
   const cta = fin ? 'Revoir la séance' : dn && dn.n ? 'Reprendre' : 'Commencer';
   const tile = (href, ic, title, sub, bd) => `<a href="${href}">${icon(ic)}<b>${title}${bd ? `<span class="bd">${bd}</span>` : ''}</b>${sub ? `<small>${sub}</small>` : ''}</a>`;
   app.innerHTML = `<div class="hi"><div><span class="hk kicker">${esc(fmt(t))}</span><h1>${hello}, ${esc(first)}</h1><p class="mute" style="margin:0">${esc(msg)}</p></div><a href="#/profil" aria-label="Mon profil">${av({uid: user.uid, name: first, photo: myProf.photo})}</a></div>
-  ${s ? `<a class="card hs" href="#/seance/${esc(s.id)}"><span class="kicker">${label}</span><span class="hst">${esc(s.title)}</span><span class="mute">${s.exercises.length} exercice${s.exercises.length > 1 ? 's' : ''}${s.date !== t ? ' · ' + esc(fmt(s.date)) : ''}</span>${dn ? `<div class="bar"><i style="width:${Math.round(dn.n / Math.max(1, dn.total) * 100)}%"></i></div>` : ''}<span class="btn">${cta}</span></a>` : (isAdmin ? '<a class="btn" href="#/admin/new">Créer la première séance</a>' : '')}
+  ${s ? `<a class="card hs" href="#/seance/${esc(s.id)}"><span class="kicker">${label}</span><span class="hst">${esc(s.title)}</span><span class="mute">${s.exercises.length} exercice${s.exercises.length > 1 ? 's' : ''}${s.date !== t ? ' · ' + esc(fmt(s.date)) : ''}</span>${dn ? `<div class="bar"><i style="width:${Math.round(dn.n / Math.max(1, dn.total) * 100)}%"></i></div>` : ''}<span class="btn">${cta}</span></a>` : (isAdmin ? '<a class="btn" href="#/admin/new">Créer la première séance</a>' : (myProf.mode === 'perso' ? '<a class="card hs" href="#/perso"><span class="kicker">Mode perso</span><span class="hst">Mes séances</span><span class="mute">Crée ou lance tes propres séances, avec l’aide de l’assistant.</span><span class="btn">Ouvrir mes séances</span></a>' : ''))}
   ${st ? `<div class="stats s3"><div class="stat"><b>${st.week}</b><span>Cette semaine</span></div><div class="stat"><b>${st.cur}</b><span>Jour${st.cur > 1 ? 's' : ''} d’affilée</span></div><div class="stat"><b>${st.total}</b><span>Au total</span></div></div>` : ''}
   <div class="qa">${tile('#/calendrier', 'cal', 'Calendrier', 'Toutes les séances')}${tile('#/perso', 'user', 'Ma séance perso', 'Tes propres séances')}${tile('#/progres', 'chart', 'Progrès', 'Charges et séries')}${tile('#/poids', 'scale', 'Poids', w ? fmtNum(w.kg) + ' kg · ' + short(w.date) : 'Ajouter une pesée')}${tile('#/musique', 'music', 'Musique', 'Spotify')}${tile('#/messages', 'chat', 'Messages', unread ? `${unread} non lu${unread > 1 ? 's' : ''}` : 'Écrire à Alban', unread || '')}${tile('#/membres', 'users', 'Membres', 'Suivre des personnes')}${isAdmin ? tile('#/admin', 'pen', 'Gérer', 'Séances et inscrits') : ''}</div>`;
 }
@@ -2238,6 +2335,130 @@ async function devCheck(uid) {
   const id = devId(); if (!id) return 'ok';
   try { const r = db.collection('devices').doc(id), d = await r.get(); if (d.exists) return d.data().uid === uid ? 'ok' : 'other'; await r.set({uid, at: Date.now()}); return 'ok'; }
   catch (e) { return 'ok'; }
+}
+
+/* ====== WeakGym : onboarding, notifications, préférences ====== */
+const NDEF = {enabled: true, title: 'WeakGym 💪', icon: 'apple-touch-icon.png', reminderHour: 18, reminderMinute: 0, defaultPersoDays: [1, 3, 5],
+  hooks: ['{prenom}, la séance du jour est prête. Allez, on s’y met ! 💪', 'Séance « {titre} » aujourd’hui. Tu vas t’en remercier.', 'C’est le jour de « {titre} ». Plus qu’à y aller !', '{n} exercices t’attendent. Une rep après l’autre.'],
+  persoHooks: ['{prenom}, c’est ton jour d’entraînement. Lance ta séance !', 'Ta séance t’attend. Même 20 minutes, ça compte.']};
+let NCFG = null;
+async function notifCfg() {
+  if (NCFG) return NCFG;
+  try { const r = await fetch('notifications.json', {cache: 'no-cache'}); NCFG = {...NDEF, ...(await r.json())}; } catch (e) { NCFG = NDEF; }
+  return NCFG;
+}
+const pickOne = a => a[Math.floor(Math.random() * a.length)];
+const fillTpl = (t, v) => String(t).replace(/\{(\w+)\}/g, (_, k) => v[k] != null ? v[k] : '');
+async function showNotif(title, body, tag) {
+  const c = await notifCfg(), opt = {body, icon: c.icon, badge: c.icon, tag};
+  try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg && reg.showNotification) return await reg.showNotification(title, opt); } catch (e) {}
+  try { new Notification(title, opt); } catch (e) {}
+}
+const notifLast = () => { try { return localStorage.getItem('wg_nlast'); } catch (e) { return null; } };
+async function notifCheck() {
+  try {
+    if (!user || !myProf || myProf.onboarded === false || myProf.notif !== true || !('Notification' in window) || Notification.permission !== 'granted') return;
+    const c = await notifCfg(); if (!c.enabled) return;
+    const now = new Date(), t = today();
+    if (notifLast() === t) return;
+    if (now.getHours() * 60 + now.getMinutes() < c.reminderHour * 60 + c.reminderMinute) return;
+    const first = (myProf.name || nm(user)).split(' ')[0]; let body;
+    if (myProf.mode === 'perso') {
+      const days = Array.isArray(myProf.notifDays) ? myProf.notifDays : c.defaultPersoDays;
+      if (!days.includes(now.getDay())) return;
+      body = fillTpl(pickOne(c.persoHooks), {prenom: first});
+    } else {
+      const s = (await all()).find(x => x.date === t); if (!s) return;
+      const l = await db.collection('logs').doc(s.id + '_' + user.uid).get();
+      if (l.exists && s.exercises.length && s.exercises.every((_, i) => (l.data().done || {})[i])) return;
+      body = fillTpl(pickOne(c.hooks), {prenom: first, titre: s.title, n: s.exercises.length});
+    }
+    try { localStorage.setItem('wg_nlast', t); } catch (e) {}
+    await showNotif(c.title, body, 'wg-' + t);
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) notifCheck(); });
+
+const DAYS = [['Lun', 1], ['Mar', 2], ['Mer', 3], ['Jeu', 4], ['Ven', 5], ['Sam', 6], ['Dim', 0]];
+function daysPicker(box, days, change) {
+  box.innerHTML = '<p class="mute" style="margin:8px 0 0;font-size:14px">Jours de rappel</p><div class="dc">' + DAYS.map(([l, n]) => `<button type="button" data-d="${n}" class="${days.includes(n) ? 'on' : ''}">${l}</button>`).join('') + '</div>';
+  box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const n = +b.dataset.d, i = days.indexOf(n); if (i >= 0) days.splice(i, 1); else days.push(n); b.classList.toggle('on', i < 0); change(days); });
+}
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+async function onboarding() {
+  const first = (myProf.name || nm(user)).split(' ')[0], cfg = await notifCfg();
+  let mode = myProf.mode === 'perso' ? 'perso' : 'weakgym', days = (cfg.defaultPersoDays || [1, 3, 5]).slice();
+  const finish = async notif => {
+    const data = {onboarded: true, mode, notif: !!notif, notifDays: days};
+    try { await db.collection('users').doc(user.uid).set(data, {merge: true}); } catch (e) {}
+    Object.assign(myProf, data); histCache = {};
+    document.body.classList.remove('onb');
+    const h = mode === 'perso' ? '#/perso' : '#/';
+    if ((location.hash || '#/') === h) route(); else location.hash = h;
+    if (mode === 'perso') setTimeout(() => { try { openAst(); } catch (e) {} }, 500);
+  };
+  const step1 = () => {
+    app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i></i></div>
+      <div class="kicker">Bienvenue sur WeakGym, ${esc(first)}</div><h1>Comment veux-tu t’entraîner ?</h1>
+      <p class="lead">Tu pourras changer d’avis à tout moment dans ton compte.</p>
+      <button type="button" class="opt ${mode === 'weakgym' ? 'on' : ''}" data-m="weakgym"><span class="em">📅</span><span><b>Suivre les séances WeakGym</b><span class="mute">Tu retrouves le programme proposé dans le calendrier, séance après séance.</span></span></button>
+      <button type="button" class="opt ${mode === 'perso' ? 'on' : ''}" data-m="perso"><span class="em">🛠️</span><span><b>Créer mes propres séances</b><span class="mute">Tu ne vois pas les séances WeakGym : tu construis les tiennes, avec l’aide de l’assistant.</span></span></button>
+      <p><button type="button" id="obn" style="width:100%">Continuer</button></p></section>`;
+    app.querySelectorAll('.opt').forEach(b => b.onclick = () => { mode = b.dataset.m; app.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b)); });
+    $('#obn').onclick = step2;
+  };
+  const step2 = () => {
+    const sup = 'Notification' in window, ios = isIOS() && !standalone(), sample = fillTpl(pickOne(mode === 'perso' ? cfg.persoHooks : cfg.hooks), {prenom: first, titre: 'Pecs · Triceps', n: 6});
+    app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i class="on"></i></div>
+      <div class="kicker">Dernière étape</div><h1>Un petit rappel, au bon moment ?</h1>
+      <p class="lead">Chaque jour de séance, WeakGym te prévient avec un petit mot de motivation, vers ${esc(cfg.reminderHour)} h.</p>
+      <div class="nprev"><span class="nb">🔔</span><span><b>${esc(cfg.title)}</b><br>${esc(sample)}</span></div>
+      ${mode === 'perso' ? '<div id="obd"></div>' : ''}
+      ${ios ? '<p class="mute" style="font-size:14px">Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil (Partager → Sur l’écran d’accueil), puis active les rappels depuis ton compte.</p>' : ''}
+      ${!sup ? '<p class="mute">Ton navigateur ne gère pas les notifications. Tu pourras les activer plus tard depuis ton compte.</p>' : ''}
+      <p id="obe" class="err" hidden></p>
+      ${sup && !ios ? '<p><button type="button" id="obon" style="width:100%">Activer les notifications</button></p>' : ''}
+      <p><button type="button" class="${sup && !ios ? 'alt' : ''}" id="obno" style="width:100%">${sup && !ios ? 'Plus tard' : 'Continuer'}</button></p>
+      <p style="text-align:center"><button type="button" class="link" id="obback">← Retour</button></p></section>`;
+    if ($('#obd')) daysPicker($('#obd'), days, () => {});
+    $('#obback').onclick = step1;
+    $('#obno').onclick = () => finish(false);
+    if ($('#obon')) $('#obon').onclick = async () => {
+      const b = $('#obon'); b.disabled = true;
+      let p = 'denied'; try { p = await Notification.requestPermission(); } catch (e) {}
+      if (p === 'granted') { await finish(true); try { await showNotif(cfg.title, 'Rappels activés. À très vite pour ta prochaine séance !', 'wg-welcome'); } catch (e) {} }
+      else { b.disabled = false; const er = $('#obe'); er.textContent = 'Notifications refusées. Tu pourras les activer plus tard depuis ton compte.'; er.hidden = false; $('#obno').textContent = 'Continuer sans'; }
+    };
+  };
+  step1();
+}
+
+function prefsHtml() {
+  const perso = myProf.mode === 'perso';
+  return `<h2>Préférences</h2><div class="card"><b>Mon programme</b>
+    <div class="seg" id="pgm" style="margin:8px 0 6px"><a href="#" data-m="weakgym" class="${perso ? '' : 'on'}">Séances WeakGym</a><a href="#" data-m="perso" class="${perso ? 'on' : ''}">Mes séances</a></div>
+    <p class="mute" style="margin:0 0 18px;font-size:14px">Avec « Mes séances », les séances WeakGym du calendrier sont masquées.</p>
+    <b>Rappels</b><p class="mute" id="nst" style="margin:4px 0 10px"></p><div id="ndays"></div><p style="margin:10px 0 0"><button id="nbtn" class="alt" type="button"></button></p></div>`;
+}
+function wirePrefs() {
+  const save = d => { Object.assign(myProf, d); return db.collection('users').doc(user.uid).set(d, {merge: true}).catch(e => alert(e.message)); };
+  const drawN = () => {
+    const sup = 'Notification' in window, perm = sup ? Notification.permission : 'denied', on = myProf.notif === true && perm === 'granted', c = NCFG || NDEF;
+    $('#nst').textContent = !sup ? 'Ton navigateur ne gère pas les notifications. Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil.' : perm === 'denied' ? 'Notifications bloquées : autorise-les dans les réglages du navigateur.' : on ? 'Activées : un rappel vers ' + c.reminderHour + ' h les jours de séance.' : 'Désactivées.';
+    $('#nbtn').hidden = !sup || perm === 'denied'; $('#nbtn').textContent = on ? 'Désactiver les rappels' : 'Activer les rappels';
+    const dd = $('#ndays'); dd.innerHTML = '';
+    if (on && myProf.mode === 'perso') { const days = Array.isArray(myProf.notifDays) ? myProf.notifDays.slice() : (c.defaultPersoDays || [1, 3, 5]).slice(); daysPicker(dd, days, d => save({notifDays: d})); }
+  };
+  document.querySelectorAll('#pgm a').forEach(a => a.onclick = async e => { e.preventDefault(); await save({mode: a.dataset.m}); histCache = {}; document.querySelectorAll('#pgm a').forEach(x => x.classList.toggle('on', x === a)); drawN(); });
+  $('#nbtn').onclick = async () => {
+    const on = myProf.notif === true && Notification.permission === 'granted';
+    if (on) { await save({notif: false}); return drawN(); }
+    let p = 'denied'; try { p = await Notification.requestPermission(); } catch (e) {}
+    if (p === 'granted') { await save({notif: true}); try { await showNotif((NCFG || NDEF).title, 'Rappels activés. À très vite pour ta prochaine séance !', 'wg-welcome'); } catch (e) {} }
+    drawN();
+  };
+  notifCfg().then(drawN); drawN();
 }
 </script>
 </body>
