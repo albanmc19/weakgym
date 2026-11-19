@@ -499,6 +499,8 @@ body.onb nav,body.onb #me{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="ios-compat.js"></script>
+<script src="i18n-dict.js"></script>
+<script src="i18n.js"></script>
 <script>
 // ====== À REMPLIR ======
 const firebaseConfig = {
@@ -518,10 +520,15 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth(), db = firebase.firestore();
 // ----- Connexion persistante (reste connecté, même après fermeture de l'appli) -----
 (async () => {
-  try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }
-  catch (e) { try { await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION); } catch (x) {} }
+  // LOCAL = la session survit à la fermeture de l'appli. On ne bascule JAMAIS vers SESSION : ce mode efface la connexion
+  // dès que l'appli est fermée par le téléphone (c'était une cause possible des déconnexions).
+  try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch (e) { console.warn('Persistance locale indisponible', e); }
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}   // demande au navigateur de ne pas purger la session
 })();
+// Reste connecté sans limite de durée : le jeton est renouvelé dès que l'appli revient au premier plan, ou que le réseau revient
+const keepAlive = async () => { if (!auth.currentUser) return; try { await auth.currentUser.getIdToken(); } catch (e) {} };
+addEventListener('online', keepAlive); addEventListener('pageshow', keepAlive);
+const bye = () => { try { localStorage.removeItem('wg_in'); } catch (e) {} };   // déconnexion volontaire : on efface le témoin
 let lastGuard = 0;
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !auth.currentUser || Date.now() - lastGuard < 6e5) return;
@@ -534,7 +541,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const VID = /^(www\.|m\.)?(youtube\.com|youtube-nocookie\.com|youtu\.be|vimeo\.com)$/i;
 const okUrl = u => { try { const x = new URL(u); return x.protocol === 'https:' && VID.test(x.hostname) && !x.username && !x.password; } catch (e) { return false; } };
 const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
-const fmt = d => new Date(d + 'T12:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+const fmt = d => new Date(d + 'T12:00').toLocaleDateString(WG.loc, {weekday:'long', day:'numeric', month:'long'});
 const blank = () => ({name: '', sets: '', reps: '', load: '', rest: '', notes: '', video: ''});
 const detail = e => [e.sets && e.reps ? `${e.sets} × ${e.reps}` : (e.sets && e.sets + ' séries') || (e.reps && e.reps + ' reps'), e.load, e.rest && 'repos ' + e.rest, e.notes].filter(Boolean).join(' · ');
 const DEFAULTS = ['Développé couché prise contre pecs','Chest press (pecs)','Pec fly banc','Mollet extension','Genou extension','Développé couché','Développé incliné','Pompes','Dips','Tractions','Rowing barre','Tirage vertical','Développé militaire','Élévations latérales','Curl biceps','Extension triceps','Squat','Presse à cuisses','Fentes','Soulevé de terre roumain','Leg curl','Mollets debout','Gainage','Crunch'];
@@ -544,23 +551,26 @@ const nm = u => u.displayName || (u.email || '').split('@')[0];
 function setWho() { $('#who').textContent = user ? nm(user).split(' ')[0] + (isAdmin ? ' (admin)' : '') : ''; const m = $('#me'); if (m) { m.hidden = !user; const ph = user ? safePhoto(myProf.photo) : ''; m.style.backgroundImage = ph ? `url(${ph})` : ''; m.style.backgroundSize = 'cover'; m.textContent = ph || !user ? '' : ((myProf.name || nm(user))[0] || '?').toUpperCase(); } }
 auth.onAuthStateChanged(async u => {
   pending = null; user = null; isAdmin = false; myProf = {};
+  // si on était connecté et qu'on ne l'est plus sans l'avoir demandé, on le dit (au lieu d'un retour silencieux à l'accueil)
+  try { if (u) localStorage.setItem('wg_in', '1'); else { if (localStorage.getItem('wg_in') === '1' && !flash) flash = 'Ta session a expiré : reconnecte-toi.'; localStorage.removeItem('wg_in'); } } catch (e) {}
   if (u) {
     if (!u.emailVerified) pending = u;
     else {
       let blocked = false, fresh = false;
       try { const d = await db.collection('users').doc(u.uid).get(); blocked = d.exists && d.data().blocked === true; myProf = d.exists ? d.data() : {}; fresh = !d.exists; } catch (e) {}
       { const lp = localPrefs(u.uid); if ((lp.prefsAt || 0) > (myProf.prefsAt || 0)) Object.assign(myProf, lp); }
+      if (myProf.lang && window.WG && WG.LANGS[myProf.lang] && myProf.lang !== WG.lang) WG.set(myProf.lang);   // langue du compte
       if (blocked) { flash = 'Ton accès a été suspendu par l’administrateur.'; await auth.signOut(); return; }
       user = u; try { isAdmin = (await db.collection('admins').doc(u.uid).get()).exists; } catch (e) { isAdmin = false; }
       if (!isAdmin && await devCheck(u.uid) === 'other') { user = null; flash = 'Cet appareil est déjà lié à un autre compte. Connecte-toi avec ton compte d’origine (celui de ta première connexion).'; await auth.signOut(); return; }
     }
   }
-  $('#out').hidden = !user; watchMsgs();
+  $('#out').hidden = !user; try { WG.picker(!user); } catch (e) {} watchMsgs();
   if (user && myProf.onboarded === undefined && myProf.seen === undefined && !myProf.name) myProf.onboarded = false;
   if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now(), ...(myProf.joined ? {} : {joined: Date.parse(u.metadata && u.metadata.creationTime) || Date.now()})}, {merge: true}).then(() => myProf.onboarded === false ? db.collection('users').doc(user.uid).set({onboarded: false}, {merge: true}) : null).catch(() => {});
   beatSync(); setWho(); Promise.resolve(route()).catch(() => {}).then(hideSplash); notifCheck();
 });
-$('#out').onclick = () => { stopRest(); auth.signOut(); };
+$('#out').onclick = () => { bye(); stopRest(); auth.signOut(); };
 addEventListener('hashchange', route);
 
 const ICO = {
@@ -658,7 +668,7 @@ function verifyScreen() {
   const say = (id, t) => { $('#ve').hidden = $('#vo').hidden = true; $(id).textContent = t; $(id).hidden = false; };
   $('#vchk').onclick = async () => { try { await pending.reload(); await pending.getIdToken(true); if (auth.currentUser.emailVerified) location.reload(); else say('#ve', 'Pas encore confirmé. Clique sur le lien reçu par e-mail.'); } catch (e) { say('#ve', authMsg(e)); } };
   $('#vsend').onclick = async () => { try { await pending.sendEmailVerification(); say('#vo', 'Lien renvoyé.'); } catch (e) { say('#ve', authMsg(e)); } };
-  $('#vout').onclick = () => auth.signOut();
+  $('#vout').onclick = () => { bye(); auth.signOut(); };
 }
 
 // ----- Chrono de repos, écran allumé -----
@@ -704,7 +714,7 @@ async function historyPage() {
     if (!f.length) { $('#hl').innerHTML = `<p class="mute">${rows.length ? 'Aucun résultat.' : 'Pas encore d’historique : tes séances apparaîtront ici dès que tu auras coché un exercice ou noté une charge.'}</p>`; return; }
     let cur = '';
     $('#hl').innerHTML = f.map(({s: x, l, n}) => {
-      const mo = new Date(x.date + 'T12:00').toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'});
+      const mo = new Date(x.date + 'T12:00').toLocaleDateString(WG.loc, {month: 'long', year: 'numeric'});
       const head = mo !== cur ? `<div class="hxm">${esc(mo)}</div>` : ''; cur = mo;
       const body = x.exercises.map((e, i) => { const st = l.sets && l.sets[i]; const t = st ? st.map(fmtSet).join(' · ') : String((l.w || {})[i] || '').trim(); return `<div class="hxr"><span>${l.done && l.done[i] ? '✓' : '○'} ${esc(e.name)}</span><span>${esc(t || '—')}</span></div>`; }).join('');
       return `${head}<details class="card hxs"><summary><span><b>${esc(x.title)}</b><br><span class="mute">${esc(fmt(x.date))} · ${n}/${x.exercises.length} faits</span></span></summary>${body}${l.note ? `<p class="mute"><i>« ${esc(l.note)} »</i></p>` : ''}<p class="row" style="flex-wrap:wrap"><a class="btn alt" href="#/seance/${esc(x.id)}">Ouvrir / modifier la séance</a><button class="alt" data-hshr="${esc(x.id)}">Partager</button><button class="del" data-hdel="${esc(x.id)}">Supprimer de mon historique</button></p></details>`;
@@ -724,7 +734,7 @@ async function listSessions() {
   const draw = () => {
     const q = $('#sq').value.trim().toLowerCase();
     const f = list.filter(s => !q || (s.title + ' ' + s.exercises.map(e => e.name).join(' ')).toLowerCase().includes(q));
-    $('#sl').innerHTML = f.length ? f.map(s => `<a class="card item" href="#/seance/${s.id}"><span><b>${esc(s.title)}</b><br><span class="mute">${fmt(s.date)} · ${s.exercises.length} exercices</span></span></a>`).join('') : '<p class="mute">Aucune séance.</p>';
+    $('#sl').innerHTML = f.length ? f.map(s => `<a class="card item" href="#/seance/${s.id}"><span><b>${esc(s.title)}</b>${sTag(s)}<br><span class="mute">${fmt(s.date)} · ${s.exercises.length} exercices</span></span></a>`).join('') : '<p class="mute">Aucune séance.</p>';
   };
   $('#sq').oninput = draw; draw();
 }
@@ -902,7 +912,7 @@ async function plusPage() {
   ${row('#/profil', 'Mon profil', 'Photo, abonnés, statut')}${row('#/poids', 'Mon poids', 'Suivi et import Basic-Fit')}${row('#/membres', 'Membres', 'Trouver et suivre des personnes')}
   ${isAdmin ? '<h2>Administration</h2>' + row('#/activite', 'Activité', 'Ce que font les inscrits') + row('#/admin', 'Gérer les séances', 'Créer, modifier, copier') + row('#/inscrits', 'Inscrits', 'Bloquer, supprimer, écrire') : ''}
   ${prefsHtml()}<h2>Compte</h2><button id="lo" class="alt" style="width:100%">Se déconnecter</button>`;
-  $('#lo').onclick = () => { stopRest(); auth.signOut(); };
+  $('#lo').onclick = () => { bye(); stopRest(); auth.signOut(); };
   wirePrefs();
 }
 
@@ -1278,7 +1288,7 @@ async function home() {
   const cta = fin ? 'Revoir la séance' : dn && dn.n ? 'Reprendre' : 'Commencer';
   const tile = (href, ic, title, sub, bd) => `<a href="${href}">${icon(ic)}<b>${title}${bd ? `<span class="bd">${bd}</span>` : ''}</b>${sub ? `<small>${sub}</small>` : ''}</a>`;
   app.innerHTML = `<div class="hi"><div><span class="hk kicker">${esc(fmt(t))}</span><h1>${hello}, ${esc(first)}</h1><p class="mute" style="margin:0">${esc(msg)}</p></div><a href="#/profil" aria-label="Mon profil">${av({uid: user.uid, name: first, photo: myProf.photo})}</a></div>
-  ${s ? `<a class="card hs" href="#/seance/${esc(s.id)}"><span class="kicker">${label}</span><span class="hst">${esc(s.title)}</span><span class="mute">${s.exercises.length} exercice${s.exercises.length > 1 ? 's' : ''}${s.date !== t ? ' · ' + esc(fmt(s.date)) : ''}</span>${dn ? `<div class="bar"><i style="width:${Math.round(dn.n / Math.max(1, dn.total) * 100)}%"></i></div>` : ''}<span class="btn">${cta}</span></a>` : (isAdmin ? '<a class="btn" href="#/admin/new">Créer la première séance</a>' : (myProf.mode === 'perso' ? '<a class="card hs" href="#/perso"><span class="kicker">Mode perso</span><span class="hst">Mes séances</span><span class="mute">Crée ou lance tes propres séances, avec l’aide de l’assistant.</span><span class="btn">Ouvrir mes séances</span></a>' : ''))}
+  ${s ? `<a class="card hs" href="#/seance/${esc(s.id)}"><span class="kicker">${label}</span><span class="hst">${esc(s.title)}</span>${sTag(s)}<span class="mute">${s.exercises.length} exercice${s.exercises.length > 1 ? 's' : ''}${s.date !== t ? ' · ' + esc(fmt(s.date)) : ''}</span>${dn ? `<div class="bar"><i style="width:${Math.round(dn.n / Math.max(1, dn.total) * 100)}%"></i></div>` : ''}<span class="btn">${cta}</span></a>` : (isAdmin ? '<a class="btn" href="#/admin/new">Créer la première séance</a>' : (myProf.mode === 'perso' ? '<a class="card hs" href="#/perso"><span class="kicker">Mode perso</span><span class="hst">Mes séances</span><span class="mute">Crée ou lance tes propres séances, avec l’aide de l’assistant.</span><span class="btn">Ouvrir mes séances</span></a>' : ''))}
   ${st ? `<div class="stats s3"><div class="stat"><b>${st.week}</b><span>Cette semaine</span></div><div class="stat"><b>${st.cur}</b><span>Jour${st.cur > 1 ? 's' : ''} d’affilée</span></div><div class="stat"><b>${st.total}</b><span>Au total</span></div></div>` : ''}
   <div class="qa">${tile('#/calendrier', 'cal', 'Calendrier', 'Toutes les séances')}${tile('#/perso', 'user', 'Ma séance perso', 'Tes propres séances')}${tile('#/progres', 'chart', 'Progrès', 'Charges et séries')}${tile('#/poids', 'scale', 'Poids', w ? fmtNum(w.kg) + ' kg · ' + short(w.date) : 'Ajouter une pesée')}${tile('#/musique', 'music', 'Musique', 'Spotify')}${tile('#/messages', 'chat', 'Messages', unread ? `${unread} non lu${unread > 1 ? 's' : ''}` : 'Écrire à Alban', unread || '')}${tile('#/membres', 'users', 'Membres', 'Suivre des personnes')}${isAdmin ? tile('#/admin', 'pen', 'Gérer', 'Séances et inscrits') : ''}</div>`;
 }
@@ -1297,8 +1307,8 @@ const delMsg = n => `Supprimer définitivement ${n > 1 ? n + ' séances' : 'cett
 async function adminList() {
   const list = await all(), t = today(), sel = new Set();
   app.innerHTML = `<h1>Gérer les séances</h1><p class="row"><a class="btn" href="#/admin/new">+ Nouvelle séance</a><a class="btn alt" href="#/inscrits">Inscrits</a></p>` +
-    (list.length ? `<p class="row" style="flex-wrap:wrap"><button class="alt" id="sall">Tout sélectionner</button><button class="alt" id="spast">Sélectionner les séances passées</button><button class="alt" id="snone" hidden>Tout désélectionner</button><button class="del" id="sbulk" hidden></button></p>` +
-    list.map(s => `<div class="card"><label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer"><input type="checkbox" data-sel="${esc(s.id)}" aria-label="Sélectionner ${esc(s.title)}" style="width:22px;height:22px;flex:none;margin:2px 0 0;padding:0"><span><b>${esc(s.title)}</b><br><span class="mute">${fmt(s.date)} · ${s.exercises.length} exercices</span></span></label>
+    (list.length ? `<p class="row" style="flex-wrap:wrap"><button class="alt" id="sall">Tout sélectionner</button><button class="alt" id="spast">Sélectionner les séances passées</button><button class="alt" id="snone" hidden>Tout désélectionner</button><button class="del" id="sbulk" hidden></button></p><p class="row" id="scatw" hidden style="flex-wrap:nowrap"><select id="scat" aria-label="Catégorie pour les séances sélectionnées">${sOpts('', 'Aucune catégorie')}</select><button class="alt" id="scatgo" style="flex:none">Appliquer à la sélection</button></p>` +
+    list.map(s => `<div class="card"><label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer"><input type="checkbox" data-sel="${esc(s.id)}" aria-label="Sélectionner ${esc(s.title)}" style="width:22px;height:22px;flex:none;margin:2px 0 0;padding:0"><span><b>${esc(s.title)}</b>${sTag(s)}<br><span class="mute">${fmt(s.date)} · ${s.exercises.length} exercices</span></span></label>
     <p class="row" style="margin:10px 0 0;flex-wrap:wrap"><a class="btn alt" href="#/seance/${s.id}">Voir le suivi</a><a class="btn alt" href="#/admin/${s.id}">Modifier</a><button class="alt" data-dup="${s.id}">Copier…</button><button class="del" data-del="${s.id}">Supprimer</button></p></div>`).join('')
     : `<p class="mute">Aucune séance créée.</p>`);
   const by = id => list.find(s => s.id === id);
@@ -1306,12 +1316,18 @@ async function adminList() {
   app.querySelectorAll('[data-dup]').forEach(b => b.onclick = () => copyModal(by(b.dataset.dup)));
   app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const x = by(b.dataset.del); if (confirm('« ' + x.title + ' » (' + fmt(x.date) + ')\n' + delMsg(1))) run([x.id]); });
   if (!list.length) return;
-  const refresh = () => { const n = sel.size; $('#sbulk').hidden = !n; $('#snone').hidden = !n; $('#sbulk').textContent = `Supprimer la sélection (${n})`; app.querySelectorAll('[data-sel]').forEach(c => { c.checked = sel.has(c.dataset.sel); }); };
+  const refresh = () => { const n = sel.size; $('#sbulk').hidden = !n; $('#snone').hidden = !n; $('#scatw').hidden = !n; $('#sbulk').textContent = `Supprimer la sélection (${n})`; app.querySelectorAll('[data-sel]').forEach(c => { c.checked = sel.has(c.dataset.sel); }); };
   app.querySelectorAll('[data-sel]').forEach(c => c.onchange = () => { c.checked ? sel.add(c.dataset.sel) : sel.delete(c.dataset.sel); refresh(); });
   $('#sall').onclick = () => { list.forEach(x => sel.add(x.id)); refresh(); };
   $('#spast').onclick = () => { sel.clear(); list.filter(x => x.date < t).forEach(x => sel.add(x.id)); refresh(); if (!sel.size) alert('Aucune séance passée.'); };
   $('#snone').onclick = () => { sel.clear(); refresh(); };
   $('#sbulk').onclick = () => { const ids = [...sel]; if (ids.length && confirm(delMsg(ids.length))) run(ids); };
+  $('#scatgo').onclick = async () => {
+    const ids = [...sel]; if (!ids.length) return; const c = $('#scat').value, b = db.batch();
+    ids.forEach(id => b.update(db.collection('sessions').doc(id), {cat: SCATS[c] ? c : firebase.firestore.FieldValue.delete()}));
+    try { await b.commit(); } catch (e) { return alert(e.message); }
+    adminList();
+  };
 }
 
 async function viewSession(id, label) {
@@ -1348,7 +1364,7 @@ async function viewSession(id, label) {
   }).catch(() => {});
   const render = () => {
     const n = s.exercises.filter((_, i) => mine.done[i]).length, nxt = s.exercises.findIndex((_, i) => !mine.done[i]);
-    app.innerHTML = `<p class="mute">${label || fmt(s.date)}</p><h1>${esc(s.title)}</h1>
+    app.innerHTML = `<p class="mute">${label || fmt(s.date)}</p><h1>${esc(s.title)}</h1>${sTag(s)}
     <p class="mute">${label ? fmt(s.date) + ' · ' : ''}${n}/${s.exercises.length} exercices faits</p>
     <div class="bar"><i style="width:${s.exercises.length ? n / s.exercises.length * 100 : 0}%"></i></div>
     ${n && n === s.exercises.length ? '<div class="card fin">Séance terminée. Bien joué.</div>' : ''}
@@ -1401,10 +1417,10 @@ async function viewSession(id, label) {
   render(); keepAwake();
 }
 
-const when = t => new Date(t).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+const when = t => new Date(t).toLocaleTimeString(WG.loc, {hour: '2-digit', minute: '2-digit'});
 const dayKey = t => new Date(t - new Date(t).getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 const dayLabel = t => { const k = dayKey(t), n = Date.now(); return k === dayKey(n) ? "Aujourd'hui" : k === dayKey(n - 864e5) ? 'Hier' : fmt(k); };
-const whenShort = t => dayKey(t) === dayKey(Date.now()) ? when(t) : new Date(t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'});
+const whenShort = t => dayKey(t) === dayKey(Date.now()) ? when(t) : new Date(t).toLocaleDateString(WG.loc, {day: 'numeric', month: 'short'});
 const linkify = t => esc(t).replace(/(https:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer nofollow" style="color:inherit;text-decoration:underline">$1</a>');
 
 const pad = n => String(n).padStart(2, '0');
@@ -1420,6 +1436,7 @@ function copyModal(src) {
     <p class="mute">Choisis une ou plusieurs dates. Chaque date reçoit une copie complète : exercices, charges, consignes et vidéos.</p>
     <div class="row" style="flex-wrap:nowrap"><input type="date" id="cd" value="${today()}" aria-label="Date de la copie"><button class="alt" id="ca" style="flex:none">Ajouter</button></div>
     <div id="cc"></div>
+    <label for="ccat">Catégorie des copies</label><select id="ccat"><option value="keep">Garder la catégorie de l’original</option>${Object.entries(SCATS).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}<option value="">Aucune catégorie</option></select>
     <p class="row" style="margin-top:18px"><button class="alt" id="cnl">Annuler</button><button id="cok">Copier</button></p></div>`;
   document.body.appendChild(el);
   const q = s => el.querySelector(s), close = () => el.remove();
@@ -1433,8 +1450,8 @@ function copyModal(src) {
   q('#cok').onclick = async () => {
     const v = q('#cd').value, list = dates.length ? dates : (v ? [v] : []);
     if (!list.length) return;
-    const b = db.batch(), ids = [];
-    list.forEach(d => { const r = db.collection('sessions').doc(); ids.push(r.id); b.set(r, {title: src.title, date: d, exercises: clone(src.exercises)}); });
+    const b = db.batch(), ids = [], cv = q('#ccat').value, cat = cv === 'keep' ? src.cat : cv;
+    list.forEach(d => { const r = db.collection('sessions').doc(); ids.push(r.id); b.set(r, {title: src.title, date: d, ...(SCATS[cat] ? {cat} : {}), exercises: clone(src.exercises)}); });
     try { await b.commit(); } catch (e) { return alert(e.message); }
     close();
     if (ids.length === 1) location.hash = '#/admin/' + ids[0];
@@ -1476,12 +1493,12 @@ async function calendarPage() {
     }
     const sel = byDay[cal.sel] || [], label = dayLabel(new Date(cal.sel + 'T12:00').getTime());
     app.innerHTML = `<h1>Calendrier</h1>${seg('cal')}
-      <div class="chead"><h2>${first.toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'})}</h2><button class="alt" id="cprev" aria-label="Mois précédent">‹</button><button class="alt" id="ctoday">Aujourd’hui</button><button class="alt" id="cnext" aria-label="Mois suivant">›</button></div>
+      <div class="chead"><h2>${first.toLocaleDateString(WG.loc, {month: 'long', year: 'numeric'})}</h2><button class="alt" id="cprev" aria-label="Mois précédent">‹</button><button class="alt" id="ctoday">Aujourd’hui</button><button class="alt" id="cnext" aria-label="Mois suivant">›</button></div>
       <p class="mute" style="margin:0 0 8px">${ms.length} séance${ms.length > 1 ? 's' : ''} ce mois · ${done} terminée${done > 1 ? 's' : ''}</p>
       <div class="cgrid" id="cg">${grid}</div>
       <div class="leg"><span><i class="d"></i>Prévue</span><span><i class="d done"></i>Terminée</span><span><i class="d part"></i>En cours</span><span><i class="d miss"></i>Manquée</span></div>
       <h2 id="dayp" style="text-transform:capitalize">${esc(label)}</h2>
-      ${sel.length ? sel.map(s => { const st = status(s); return `<a class="card item" href="#/seance/${s.id}"><span><b>${esc(s.title)}</b><br><span class="mute">${s.exercises.length} exercices${cache[s.id] ? ' · ' + cache[s.id] + ' faits' : ''}</span></span><b class="st-${st}">${ST[st]}</b></a>`; }).join('') : '<p class="mute">Rien de prévu ce jour.</p>'}
+      ${sel.length ? sel.map(s => { const st = status(s); return `<a class="card item" href="#/seance/${s.id}"><span><b>${esc(s.title)}</b>${sTag(s)}<br><span class="mute">${s.exercises.length} exercices${cache[s.id] ? ' · ' + cache[s.id] + ' faits' : ''}</span></span><b class="st-${st}">${ST[st]}</b></a>`; }).join('') : '<p class="mute">Rien de prévu ce jour.</p>'}
       ${isAdmin ? `<div class="card"><b>Ajouter à ce jour</b><p style="margin:10px 0 0"><a class="btn" href="#/admin/new/${cal.sel}">+ Nouvelle séance</a></p>${sessions.length ? `<label for="cps">Copier une séance existante ici</label><select id="cps">${sessions.map(s => `<option value="${s.id}">${esc(s.title)} — ${esc(fmt(s.date))}</option>`).join('')}</select><p style="margin:10px 0 0"><button class="alt" id="cph">Copier ici</button></p>` : ''}</div>` : ''}`;
     app.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => {
       cal.sel = b.dataset.d; const d = new Date(cal.sel + 'T12:00');
@@ -1492,7 +1509,7 @@ async function calendarPage() {
     $('#ctoday').onclick = async () => { const n = new Date(); cal.y = n.getFullYear(); cal.m = n.getMonth(); cal.sel = today(); await loadLogs(); draw(); };
     if ($('#cph')) $('#cph').onclick = async () => {
       const s = sessions.find(x => x.id === $('#cps').value);
-      try { await db.collection('sessions').add({title: s.title, date: cal.sel, exercises: clone(s.exercises)}); calendarPage(); } catch (e) { alert(e.message); }
+      try { await db.collection('sessions').add({title: s.title, date: cal.sel, ...(SCATS[s.cat] ? {cat: s.cat} : {}), exercises: clone(s.exercises)}); calendarPage(); } catch (e) { alert(e.message); }
     };
     let x0 = null; const g = $('#cg');
     g.ontouchstart = e => { x0 = e.touches[0].clientX; };
@@ -1501,7 +1518,7 @@ async function calendarPage() {
   await loadLogs(); draw();
 }
 
-const short = d => new Date(d + 'T12:00').toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'});
+const short = d => new Date(d + 'T12:00').toLocaleDateString(WG.loc, {day: 'numeric', month: 'short'});
 const parseLoad = w => { const m = /(\d+(?:[.,]\d+)?)\s*kg/i.exec(w) || /(\d+(?:[.,]\d+)?)/.exec(w); return m ? parseFloat(m[1].replace(',', '.')) : null; };
 const fmtNum = n => String(Math.round(n * 100) / 100).replace('.', ',');
 const fmtSet = v => { v = String(v == null ? '' : v).trim(); return !v ? '—' : /^[\d.,\s]+$/.test(v) ? v + ' kg' : v; };
@@ -1815,6 +1832,10 @@ async function thread(uid, nameHint) {
 
 const addDays = (k, n) => { const d = new Date(k + 'T12:00'); d.setDate(d.getDate() + n); return iso(d); };
 const LIM = {name: 80, sets: 10, reps: 20, load: 30, rest: 20, notes: 200, video: 300};
+// Catégorie d'une séance : hypertrophie / force / endurance (champ "cat" du document)
+const SCATS = {hyper: 'Hypertrophie', force: 'Force', endu: 'Endurance'};
+const sTag = s => s && SCATS[s.cat] ? `<span class="scat sc-${s.cat}">${SCATS[s.cat]}</span>` : '';
+const sOpts = (v, none) => `<option value="">${none}</option>` + Object.entries(SCATS).map(([k, n]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${n}</option>`).join('');
 const parseLines = t => t.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 40).map(l => {
   const [name, sr, load, rest, notes] = l.split('|').map(x => x.trim()), m = /^(\d+)\s*[x×*]\s*(.+)$/i.exec(sr || '');
   return {...blank(), name: name || '', sets: m ? m[1] : '', reps: m ? m[2] : (sr || ''), load: load || '', rest: rest || '', notes: notes || ''};
@@ -1832,6 +1853,7 @@ async function editSession(id, preset) {
     <datalist id="exlist">${[...known].map(n => `<option value="${esc(n)}">`).join('')}</datalist>
     <label for="t">Titre</label><input id="t" maxlength="100" value="${esc(s.title)}" placeholder="Pecs / triceps">
     <label for="d">Date</label><input id="d" type="date" value="${esc(s.date)}">
+    <label for="cat">Catégorie</label><select id="cat">${sOpts(s.cat, 'Aucune catégorie')}</select>
     ${id ? '' : `<div class="card"><b>Gagner du temps</b>
       <label for="tpl">Partir d’une séance existante</label><div class="row nowrap"><select id="tpl"><option value="">Choisir…</option>${existing.map(x => `<option value="${esc(x.id)}">${esc(x.title)} — ${esc(fmt(x.date))}</option>`).join('')}</select><button class="alt" id="tplgo" style="flex:none">Charger</button></div>
       <label for="rep">Répéter chaque semaine</label><select id="rep">${[1, 2, 3, 4, 6, 8, 12].map(n => `<option value="${n}" ${n === s.rep ? 'selected' : ''}>${n === 1 ? 'Une seule fois' : n + ' semaines (même jour)'}</option>`).join('')}</select>
@@ -1844,11 +1866,11 @@ async function editSession(id, preset) {
       <div style="margin-top:8px"><input type="url" inputmode="url" autocapitalize="off" maxlength="${LIM.video}" data-i="${i}" data-k="video" value="${esc(e.video)}" placeholder="Lien vidéo YouTube ou Vimeo (optionnel)" aria-label="Lien vidéo"></div>
       <p class="row" style="margin:10px 0 0;flex:none"><button class="link" data-up="${i}" ${i ? '' : 'disabled'}>Monter</button><button class="link" data-down="${i}" ${i < s.exercises.length - 1 ? '' : 'disabled'}>Descendre</button><button class="link" data-cp="${i}">Dupliquer</button><button class="link" data-rm="${i}">Retirer</button></p></div>`).join('')}
     <p class="row stick"><button class="alt" id="add">+ Ajouter un exercice</button><button id="sv">Enregistrer la séance</button></p>`;
-    const read = () => { s.title = $('#t').value; s.date = $('#d').value; if ($('#rep')) s.rep = +$('#rep').value; if ($('#bulk')) s.bulk = $('#bulk').value; app.querySelectorAll('[data-k]').forEach(i => s.exercises[i.dataset.i][i.dataset.k] = i.value); };
+    const read = () => { s.title = $('#t').value; s.date = $('#d').value; s.cat = $('#cat').value; if ($('#rep')) s.rep = +$('#rep').value; if ($('#bulk')) s.bulk = $('#bulk').value; app.querySelectorAll('[data-k]').forEach(i => s.exercises[i.dataset.i][i.dataset.k] = i.value); };
     const on = (sel, f) => app.querySelectorAll(sel).forEach(b => b.onclick = () => { read(); f(+Object.values(b.dataset)[0]); draw(); });
     const empty = () => s.exercises.length === 1 && !s.exercises[0].name.trim();
     $('#add').onclick = () => { read(); s.exercises.push(blank()); draw(); };
-    if ($('#tplgo')) $('#tplgo').onclick = () => { read(); const t = existing.find(x => x.id === $('#tpl').value); if (!t) return; if (!s.title.trim()) s.title = t.title; s.exercises = clone(t.exercises); draw(); };
+    if ($('#tplgo')) $('#tplgo').onclick = () => { read(); const t = existing.find(x => x.id === $('#tpl').value); if (!t) return; if (!s.title.trim()) s.title = t.title; if (!s.cat && t.cat) s.cat = t.cat; s.exercises = clone(t.exercises); draw(); };
     if ($('#bulkgo')) $('#bulkgo').onclick = () => { read(); const n = parseLines(s.bulk).filter(e => e.name); if (!n.length) return; s.exercises = (empty() ? [] : s.exercises).concat(n).slice(0, 60); s.bulk = ''; draw(); };
     on('[data-rm]', i => s.exercises.splice(i, 1));
     on('[data-cp]', i => s.exercises.splice(i + 1, 0, {...s.exercises[i]}));
@@ -1862,7 +1884,7 @@ async function editSession(id, preset) {
       $('#sv').disabled = true;
       const dates = id ? [s.date] : Array.from({length: s.rep || 1}, (_, k) => addDays(s.date, 7 * k));
       const b = db.batch(); let first;
-      dates.forEach((d, k) => { const r = id ? db.collection('sessions').doc(id) : db.collection('sessions').doc(); if (!k) first = r.id; b.set(r, {title: s.title.trim().slice(0, 100), date: d, exercises: clone(ex)}); });
+      dates.forEach((d, k) => { const r = id ? db.collection('sessions').doc(id) : db.collection('sessions').doc(); if (!k) first = r.id; b.set(r, {title: s.title.trim().slice(0, 100), date: d, ...(SCATS[s.cat] ? {cat: s.cat} : {}), exercises: clone(ex)}); });
       try { await b.commit(); } catch (e) { $('#sv').disabled = false; return alert(e.message); }
       location.hash = dates.length > 1 ? '#/calendrier' : '#/seance/' + first;
     };
@@ -1884,7 +1906,7 @@ const lastSeen = (ms, self) => {
   const m = Math.round(d / 6e4); if (m < 60) return `Actif il y a ${m} min`;
   const h = Math.round(m / 60); if (h < 24) return `Actif il y a ${h} h`;
   const j = Math.round(h / 24); if (j === 1) return 'Actif hier'; if (j < 30) return `Actif il y a ${j} jours`;
-  return 'Actif le ' + new Date(ms).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
+  return 'Actif le ' + new Date(ms).toLocaleDateString(WG.loc, {day: 'numeric', month: 'short', year: 'numeric'});
 };
 
 // compteur « X s’entraînent » : 1 compte = 1 personne (peu importe le nombre d’onglets ou d’appareils),
@@ -2000,7 +2022,7 @@ async function profilePage(uid) {
       <label for="edb">Bio</label><textarea id="edb" rows="2" maxlength="140" placeholder="Objectif, salle, programme…">${esc(u.bio || '')}</textarea>
       <p id="eder" class="err" hidden></p>
       <p class="row" style="margin:14px 0 0"><button id="eds">Enregistrer</button><button class="alt" id="edc" type="button">Annuler</button></p></div>` : ''}
-    <div class="stats s3"><div class="stat"><b id="nfol">${followers.length}</b><span id="lfol">Abonné${followers.length > 1 ? 's' : ''}</span></div><div class="stat"><b>${following.length}</b><span>Abonnement${following.length > 1 ? 's' : ''}</span></div><div class="stat"><b>${u.seen ? new Date(u.seen).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'}) : '–'}</b><span>Dernière activité</span></div></div>
+    <div class="stats s3"><div class="stat"><b id="nfol">${followers.length}</b><span id="lfol">Abonné${followers.length > 1 ? 's' : ''}</span></div><div class="stat"><b>${following.length}</b><span>Abonnement${following.length > 1 ? 's' : ''}</span></div><div class="stat"><b>${u.seen ? new Date(u.seen).toLocaleDateString(WG.loc, {day: 'numeric', month: 'short'}) : '–'}</b><span>Dernière activité</span></div></div>
     <div class="seg" id="tabs"><a href="#" data-t="followers" class="on">Abonnés</a><a href="#" data-t="following">Abonnements</a></div><div id="plist"></div>`;
   const drawList = () => {
     const l = tab === 'followers' ? followers : following;
@@ -2296,7 +2318,7 @@ function astPeriod(t) {
 }
 async function astData(raw, t) {
   const H = await getHistory(user.uid), P = astPeriod(t), inP = x => x.date >= P.a && x.date <= P.b, lab = P.lab ? ' ' + P.lab : '';
-  const wl = e => /^[\d.,]+$/.test(String(e.w).trim()) ? e.w + ' kg' : e.w, sd = x => new Date(x + 'T12:00').toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'});
+  const wl = e => /^[\d.,]+$/.test(String(e.w).trim()) ? e.w + ' kg' : e.w, sd = x => new Date(x + 'T12:00').toLocaleDateString(WG.loc, {day: 'numeric', month: 'short'});
   const row = e => '<b>' + esc(wl(e)) + '</b> le ' + esc(fmt(e.date)) + ' (<a href="#/seance/' + esc(e.id) + '">« ' + esc(e.title) + ' »</a>)' + (e.sets ? '<br><span class="mute">séries : ' + e.sets.filter(Boolean).map(esc).join(' · ') + '</span>' : '');
   const names = [...new Map(H.entries.map(e => [e.key, {name: e.name, id: e.key}])).values()];
   const wantMax = /max|record|meilleur|plus lourd|plus gros|\bpr\b/.test(t), wantHist = /historique|evolution|progression/.test(t), wantCnt = /combien de (seances|fois)/.test(t);
@@ -2384,7 +2406,7 @@ async function astPro(raw, t) {
     H.entries.filter(e => e.date < P.a && e.num != null).forEach(e => { prior[e.key] = Math.max(prior[e.key] || 0, e.num); });
     H.entries.filter(e => e.date >= P.a && e.date <= b && e.num != null && prior[e.key] != null && e.num > prior[e.key]).forEach(e => { prior[e.key] = e.num; pr.push(e); });
     const prs = [...new Map(pr.map(e => [e.key, e])).values()].slice(0, 5);
-    return O('<p>Bilan ' + esc(P.lab) + ' :</p>' + li2(['<b>' + c.s + '</b> séance' + (c.s > 1 ? 's' : '') + ' terminée' + (c.s > 1 ? 's' : '') + (p.s ? ' (' + dl(c.s, p.s) + ' vs période précédente)' : ''), '<b>' + c.ex + '</b> exercices validés', 'Tonnage estimé : <b>' + c.ton.toLocaleString('fr-FR') + ' kg</b>' + (p.ton ? ' (' + dl(c.ton, p.ton) + ')' : '')]) + (prs.length ? '<p>Nouveaux records :</p>' + li2(prs.map(e => esc(e.name) + ' : ' + N(e.num) + ' kg')) : '') + '<p class="mute">Tonnage = charges notées × reps prévues dans la séance.</p>');
+    return O('<p>Bilan ' + esc(P.lab) + ' :</p>' + li2(['<b>' + c.s + '</b> séance' + (c.s > 1 ? 's' : '') + ' terminée' + (c.s > 1 ? 's' : '') + (p.s ? ' (' + dl(c.s, p.s) + ' vs période précédente)' : ''), '<b>' + c.ex + '</b> exercices validés', 'Tonnage estimé : <b>' + c.ton.toLocaleString(WG.loc) + ' kg</b>' + (p.ton ? ' (' + dl(c.ton, p.ton) + ')' : '')]) + (prs.length ? '<p>Nouveaux records :</p>' + li2(prs.map(e => esc(e.name) + ' : ' + N(e.num) + ' kg')) : '') + '<p class="mute">Tonnage = charges notées × reps prévues dans la séance.</p>');
   }
   // 7. Équilibre musculaire
   if (/equilibre|desequilibre|repartition musc|muscles? (negliges|oublies)|poussee|push pull/.test(t)) {
@@ -2436,19 +2458,20 @@ async function astPro(raw, t) {
 // ====== Ma séance perso : séances privées par utilisateur (collection « mysessions ») ======
 const PC = () => db.collection('mysessions');
 const cleanEx = a => (a || []).slice(0, 40).map(e => ({name: String(e.name || '').trim().slice(0, 80), sets: String(e.sets || '').slice(0, 10), reps: String(e.reps || '').slice(0, 20), load: String(e.load || '').slice(0, 30), rest: String(e.rest || '').slice(0, 20), notes: String(e.notes || '').slice(0, 200)})).filter(e => e.name);
-async function savePerso(title, exercises, id) {
+async function savePerso(title, exercises, id, cat) {
   const ex = cleanEx(exercises); if (!ex.length) throw new Error('Ajoute au moins un exercice.');
   const data = {title: String(title || '').trim().slice(0, 80) || 'Ma séance', exercises: ex, updatedAt: Date.now()};
-  if (id) { await PC().doc(id).update(data); return id; }
-  return (await PC().add({...data, uid: user.uid, owner: (myProf.name || nm(user)).slice(0, 60), createdAt: Date.now()})).id;
+  if (id) { await PC().doc(id).update({...data, cat: SCATS[cat] ? cat : firebase.firestore.FieldValue.delete()}); return id; }
+  return (await PC().add({...data, ...(SCATS[cat] ? {cat} : {}), uid: user.uid, owner: (myProf.name || nm(user)).slice(0, 60), createdAt: Date.now()})).id;
 }
 function persoEditor(s, done) {
-  const st = {title: s ? s.title : '', ex: s ? clone(s.exercises) : [{name: '', sets: '3', reps: '10', load: '', rest: '1 min 30', notes: ''}]}, el = document.createElement('div'), known = [...new Set([...DEFAULTS, ...LIB.map(l => l.n)])];
+  const st = {title: s ? s.title : '', cat: (s && s.cat) || '', ex: s ? clone(s.exercises) : [{name: '', sets: '3', reps: '10', load: '', rest: '1 min 30', notes: ''}]}, el = document.createElement('div'), known = [...new Set([...DEFAULTS, ...LIB.map(l => l.n)])];
   el.className = 'modal';
   const inp = (i, k, ph, v, mode) => `<input data-i="${i}" data-k="${k}" maxlength="${k === 'name' ? 80 : 30}" ${mode ? `inputmode="${mode}"` : ''} value="${esc(v)}" placeholder="${ph}" aria-label="${ph} ${i + 1}">`;
   const paint = () => {
     el.innerHTML = `<div class="sheet" role="dialog" aria-label="Séance perso"><h2 style="margin-top:0">${s ? 'Modifier la séance' : 'Nouvelle séance perso'}</h2>
     <label for="pt">Nom de la séance</label><input id="pt" maxlength="80" value="${esc(st.title)}" placeholder="ex. Pecs + triceps du lundi">
+    <label for="pcat">Catégorie</label><select id="pcat">${sOpts(st.cat, 'Aucune catégorie')}</select>
     <datalist id="pxl">${known.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
     ${st.ex.map((e, i) => `<div class="card" style="padding:12px"><input data-i="${i}" data-k="name" list="pxl" maxlength="80" value="${esc(e.name)}" placeholder="Exercice ${i + 1}" aria-label="Exercice ${i + 1}">
       <div class="row" style="margin-top:8px">${inp(i, 'sets', 'Séries', e.sets, 'numeric')}${inp(i, 'reps', 'Reps', e.reps)}${inp(i, 'load', 'Charge', e.load)}${inp(i, 'rest', 'Repos', e.rest)}</div>
@@ -2457,6 +2480,7 @@ function persoEditor(s, done) {
     <p class="row" style="margin-top:14px"><button type="button" class="alt" id="pcx">Annuler</button><button type="button" id="psv">Enregistrer</button></p></div>`;
     const q = x => el.querySelector(x);
     q('#pt').oninput = e => { st.title = e.target.value; };
+    q('#pcat').onchange = e => { st.cat = e.target.value; };
     el.querySelectorAll('input[data-k]').forEach(i => i.oninput = e => { st.ex[+i.dataset.i][i.dataset.k] = e.target.value; });
     el.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { st.ex.splice(+b.dataset.r, 1); if (!st.ex.length) st.ex.push({name: '', sets: '3', reps: '10', load: '', rest: '', notes: ''}); paint(); });
     const mv = (i, d) => { const j = i + d; [st.ex[i], st.ex[j]] = [st.ex[j], st.ex[i]]; paint(); };
@@ -2464,7 +2488,7 @@ function persoEditor(s, done) {
     el.querySelectorAll('[data-dn]').forEach(b => b.onclick = () => mv(+b.dataset.dn, 1));
     q('#padd').onclick = () => { if (st.ex.length < 40) { st.ex.push({name: '', sets: '3', reps: '10', load: '', rest: '1 min 30', notes: ''}); paint(); const n = el.querySelectorAll('input[data-k="name"]'); n[n.length - 1].focus(); } };
     q('#pcx').onclick = () => el.remove();
-    q('#psv').onclick = async () => { const b = q('#psv'); b.disabled = true; try { const id = await savePerso(st.title, st.ex, s && s.id); el.remove(); done(id); } catch (e) { b.disabled = false; const r = q('#perr'); r.textContent = e.code === 'permission-denied' ? 'Enregistrement refusé : les règles Firestore doivent autoriser « mysessions ».' : (e.message || 'Erreur.'); r.hidden = false; } };
+    q('#psv').onclick = async () => { const b = q('#psv'); b.disabled = true; try { const id = await savePerso(st.title, st.ex, s && s.id, st.cat); el.remove(); done(id); } catch (e) { b.disabled = false; const r = q('#perr'); r.textContent = e.code === 'permission-denied' ? 'Enregistrement refusé : les règles Firestore doivent autoriser « mysessions ».' : (e.message || 'Erreur.'); r.hidden = false; } };
   };
   el.onclick = e => { if (e.target === el) el.remove(); };
   paint(); document.body.appendChild(el);
@@ -2476,13 +2500,13 @@ async function persoPage(openId) {
     ${isAdmin ? '<div class="seg" id="psc"><a href="#" data-s="me" class="on">Les miennes</a><a href="#" data-s="all">Tous les membres</a></div>' : ''}
     <p class="row"><button id="pnew">+ Nouvelle séance perso</button></p><div id="pl"><p class="mute">Chargement…</p></div>`;
   const draw = () => {
-    const mine = x => x.uid === user.uid, dt = x => new Date(x.updatedAt || x.createdAt || Date.now()).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'});
-    $('#pl').innerHTML = list.length ? list.map(x => `<details class="card act pj" ${x.id === openId ? 'open' : ''}><summary><span style="flex:1"><b>${esc(x.title)}</b><br><span class="mute">${x.exercises.length} exercice${x.exercises.length > 1 ? 's' : ''}${mine(x) ? '' : ' · ' + esc(x.owner || 'Membre')} · ${esc(dt(x))}</span></span><span class="chev" aria-hidden="true">⌄</span></summary>
+    const mine = x => x.uid === user.uid, dt = x => new Date(x.updatedAt || x.createdAt || Date.now()).toLocaleDateString(WG.loc, {day: 'numeric', month: 'short'});
+    $('#pl').innerHTML = list.length ? list.map(x => `<details class="card act pj" ${x.id === openId ? 'open' : ''}><summary><span style="flex:1"><b>${esc(x.title)}</b>${sTag(x)}<br><span class="mute">${x.exercises.length} exercice${x.exercises.length > 1 ? 's' : ''}${mine(x) ? '' : ' · ' + esc(x.owner || 'Membre')} · ${esc(dt(x))}</span></span><span class="chev" aria-hidden="true">⌄</span></summary>
       <ol class="pex">${x.exercises.map(e => `<li><b>${esc(e.name)}</b>${detail(e) ? `<br><span class="mute">${esc(detail(e))}</span>` : ''}</li>`).join('')}</ol>
       ${mine(x) ? `<p class="row"><button class="alt" data-e="${esc(x.id)}">Modifier</button><button class="alt" data-c="${esc(x.id)}">Dupliquer</button><button class="del" data-x="${esc(x.id)}">Supprimer</button></p>` : '<p class="mute">Lecture seule.</p>'}</details>`).join('') : '<p class="mute">Aucune séance pour l’instant. Crée-en une, ou demande à l’assistant : « génère une séance dos 45 min ».</p>';
     const get = id => list.find(x => x.id === id), refresh = async () => { await load(); draw(); };
     $('#pl').querySelectorAll('[data-e]').forEach(b => b.onclick = () => persoEditor(get(b.dataset.e), refresh));
-    $('#pl').querySelectorAll('[data-c]').forEach(b => b.onclick = async () => { const x = get(b.dataset.c); b.disabled = true; try { await savePerso(x.title + ' (copie)', x.exercises); await refresh(); } catch (e) { b.disabled = false; alert(e.message); } });
+    $('#pl').querySelectorAll('[data-c]').forEach(b => b.onclick = async () => { const x = get(b.dataset.c); b.disabled = true; try { await savePerso(x.title + ' (copie)', x.exercises, undefined, x.cat); await refresh(); } catch (e) { b.disabled = false; alert(e.message); } });
     $('#pl').querySelectorAll('[data-x]').forEach(b => b.onclick = async () => { if (!confirm('Supprimer cette séance perso ?')) return; try { await PC().doc(b.dataset.x).delete(); await refresh(); } catch (e) { alert(e.message); } });
   };
   const fail = e => { $('#pl').innerHTML = `<p class="err">${e && e.code === 'permission-denied' ? 'Accès refusé : ajoute les règles Firestore pour la collection « mysessions ».' : 'Impossible de charger tes séances.'}</p>`; };
@@ -2556,7 +2580,7 @@ async function onboarding() {
   const first = (myProf.name || nm(user)).split(' ')[0], cfg = await notifCfg();
   let mode = myProf.mode === 'perso' ? 'perso' : 'weakgym', days = (cfg.defaultPersoDays || [1, 3, 5]).slice(), time = hhmm([cfg.reminderHour, cfg.reminderMinute || 0]);
   const finish = async notif => {
-    const data = {onboarded: true, mode, notif: !!notif, notifDays: days, notifTime: time};
+    const data = {onboarded: true, mode, notif: !!notif, notifDays: days, notifTime: time, lang: WG.lang};
     await savePrefs(data); histCache = {};
     document.body.classList.remove('onb');
     const h = mode === 'perso' ? '#/perso' : '#/';
@@ -2564,17 +2588,27 @@ async function onboarding() {
     if (mode === 'perso') setTimeout(() => { try { openAst(); } catch (e) {} }, 500);
   };
   const step1 = () => {
-    app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i></i></div>
+    app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i></i><i></i></div>
       <div class="kicker">Bienvenue sur WeakGym, ${esc(first)}</div><h1>Comment veux-tu t’entraîner ?</h1>
       <p class="lead">Tu pourras changer d’avis à tout moment dans ton compte.</p>
       <div id="obm"></div>
       <p><button type="button" id="obn" style="width:100%">Continuer</button></p></section>`;
     modeSwitch($('#obm'), mode, m => { mode = m; });
-    $('#obn').onclick = step2;
+    $('#obn').onclick = stepL;
+  };
+  const stepL = () => {   // choix de la langue (après le choix du mode)
+    app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i class="on"></i><i></i></div>
+      <div class="kicker">Langue</div><h1>Quelle langue préfères-tu ?</h1>
+      <p class="lead">Tu pourras la changer à tout moment dans les paramètres.</p>
+      <div id="obl">${Object.entries(WG.LANGS).map(([k, n]) => `<button type="button" class="alt ${k === WG.lang ? 'on' : ''}" data-lg="${k}" data-notr style="width:100%;margin:0 0 10px">${n}${k === WG.lang ? ' ✓' : ''}</button>`).join('')}</div>
+      <p><button type="button" id="obn2" style="width:100%">Continuer</button></p>
+      <p style="text-align:center"><button type="button" class="link" id="obback">← Retour</button></p></section>`;
+    app.querySelectorAll('[data-lg]').forEach(b => b.onclick = () => { WG.set(b.dataset.lg); stepL(); });
+    $('#obn2').onclick = step2; $('#obback').onclick = step1;
   };
   const step2 = () => {
     const sup = 'Notification' in window, ios = isIOS() && !standalone(), sample = fillTpl(pickOne(mode === 'perso' ? cfg.persoHooks : cfg.hooks), {prenom: first, titre: 'Pecs · Triceps', n: 6});
-    app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i class="on"></i></div>
+    app.innerHTML = `<section class="ob"><div class="ob-dots"><i class="on"></i><i class="on"></i><i class="on"></i></div>
       <div class="kicker">Dernière étape</div><h1>Un petit rappel, au bon moment ?</h1>
       <p class="lead">Chaque jour de séance, WeakGym te prévient avec un petit mot de motivation, à l’heure que tu choisis.</p>
       <div class="nprev"><span class="nb"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span><b>${esc(cfg.title)}</b><br>${esc(sample)}</span></div>
@@ -2588,7 +2622,7 @@ async function onboarding() {
       <p style="text-align:center"><button type="button" class="link" id="obback">← Retour</button></p></section>`;
     $('#obt').onchange = e => { if (e.target.value) time = e.target.value; };
     if ($('#obd')) daysPicker($('#obd'), days, () => {});
-    $('#obback').onclick = step1;
+    $('#obback').onclick = stepL;
     $('#obno').onclick = () => finish(false);
     if ($('#obon')) $('#obon').onclick = async () => {
       const b = $('#obon'); b.disabled = true;
@@ -2602,11 +2636,12 @@ async function onboarding() {
 
 function prefsHtml() {
   const perso = myProf.mode === 'perso';
-  return `<h2>Préférences</h2><div class="card"><div id="pgm"></div><div id="pgx" style="margin:10px 0 18px"></div>
+  return `<h2>Préférences</h2><div class="card"><label for="plang" style="margin-top:0">Langue</label><select id="plang" data-notr style="margin-bottom:16px">${Object.entries(WG.LANGS).map(([k, n]) => `<option value="${k}" ${k === WG.lang ? 'selected' : ''}>${n}</option>`).join('')}</select><div id="pgm"></div><div id="pgx" style="margin:10px 0 18px"></div>
     <b>Rappels</b><p class="mute" id="nst" style="margin:4px 0 10px"></p><div id="ntime"></div><div id="ndays"></div><p style="margin:10px 0 0"><button id="nbtn" class="alt" type="button"></button></p></div>`;
 }
 function wirePrefs() {
   const save = d => savePrefs(d);
+  $('#plang').onchange = async e => { const l = e.target.value; WG.set(l); await savePrefs({lang: l}); location.reload(); };
   const drawN = () => {
     const sup = 'Notification' in window, perm = sup ? Notification.permission : 'denied', on = myProf.notif === true && perm === 'granted', c = NCFG || NDEF;
     $('#nst').textContent = !sup ? 'Ton navigateur ne gère pas les notifications. Sur iPhone, ajoute d’abord WeakGym à l’écran d’accueil.' : perm === 'denied' ? 'Notifications bloquées : autorise-les dans les réglages du navigateur.' : on ? 'Activées : un rappel à ' + hhmm(notifTime(c)) + ' les jours de séance.' : 'Désactivées.';
@@ -2937,7 +2972,7 @@ const WGShare = (() => {
 
   /* ---------- les cartes ---------- */
   const TAGS = '#WeakGym #musculation #gym #fitness';
-  const dlong = d => new Date(d + 'T12:00').toLocaleDateString('fr-FR', {day: 'numeric', month: 'long'});
+  const dlong = d => new Date(d + 'T12:00').toLocaleDateString(WG.loc, {day: 'numeric', month: 'long'});
   const sgn = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtNum(Math.abs(n));
   const tonnes = v => v >= 1000 ? fmtNum(v / 1000) + ' t' : fmtNum(v) + ' kg';
 
