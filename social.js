@@ -84,7 +84,7 @@ const ago = ms => {
   if (m < 1) return 'à l’instant'; if (m < 60) return `il y a ${m} min`;
   const h = Math.round(m / 60); if (h < 24) return `il y a ${h} h`;
   const j = Math.round(h / 24); if (j < 7) return `il y a ${j} j`;
-  return new Date(ms).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
+  return new Date(ms).toLocaleDateString(WG.loc, {day: 'numeric', month: 'short', year: 'numeric'});
 };
 
 /* ---------- photo : redimensionnée + compressée (stockée dans Firestore, pas de vidéo) ---------- */
@@ -357,7 +357,7 @@ async function profilePage(uid) {
   const following = fg.docs.map(d => d.data()).sort((a, b) => b.at - a.at).map(f => users[f.to]).filter(Boolean);
   const myFol = new Set(mine.docs.map(d => d.data().to));
   let posts = fromDocs(ps).sort((a, b) => b.at - a.at), iFollow = fr.docs.some(d => d.data().from === user.uid);
-  const joined = u.joined ? new Date(u.joined).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : '';
+  const joined = u.joined ? new Date(u.joined).toLocaleDateString(WG.loc, {month: 'long', year: 'numeric'}) : '';
   const showJoined = joined && (self || !u.hideJoined);
   const stat = (k, n, l) => `<button data-s="${k}"><b>${n}</b><span>${l}</span></button>`;
   app.innerHTML = `${self ? '' : '<p style="margin:0"><a class="link" href="#/social" style="padding-left:0">← Social</a></p>'}
