@@ -1,12 +1,12 @@
 /* WeakGym · moteur de langue
    - Les textes de l'appli restent écrits en français dans le code ; ce moteur les traduit à l'affichage
      grâce à i18n-dict.js (dictionnaire + motifs). Un texte sans traduction reste en français.
-   - Langue : choix enregistré (wg_lang) > langue du navigateur (fr/en/de/es) > français.
+   - Langue : choix enregistré (wg_lang) > langue du navigateur (fr/en/de/es/ru) > français.
    - API : WG.lang, WG.loc (ex. "en-GB", pour les dates), WG.LANGS, WG.set(code), WG.t(texte), WG.picker(afficher) */
 (function () {
   'use strict';
-  var LANGS = {fr: 'Français', en: 'English', de: 'Deutsch', es: 'Español'};
-  var LOC = {fr: 'fr-FR', en: 'en-GB', de: 'de-DE', es: 'es-ES'};
+  var LANGS = {fr: 'Français', en: 'English', de: 'Deutsch', es: 'Español', ru: 'Русский'};
+  var LOC = {fr: 'fr-FR', en: 'en-GB', de: 'de-DE', es: 'es-ES', ru: 'ru-RU'};
   var COL = {en: 1, de: 2, es: 3};
   var ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
   var SKIP = {SCRIPT: 1, STYLE: 1, TEXTAREA: 1, NOSCRIPT: 1, CODE: 1};
@@ -23,8 +23,14 @@
   var MAP = new Map();
   (window.WG_DICT || []).forEach(function (r) { MAP.set(norm(r[0]), r); });
   var PAT = window.WG_PAT || [];
+  var RU = window.WG_RU || {}, RUP = window.WG_RU_PAT || [];   // russe : traductions dans i18n-ru.js
 
   function lookup(core) {
+    if (lang === 'ru') {
+      if (RU[core]) return RU[core];
+      for (var k = 0; k < PAT.length; k++) if (PAT[k][0].test(core) && RUP[k] != null) return core.replace(PAT[k][0], RUP[k]);
+      return null;
+    }
     var r = MAP.get(core);
     if (r) return r[COL[lang]] || null;
     for (var i = 0; i < PAT.length; i++) if (PAT[i][0].test(core)) return core.replace(PAT[i][0], PAT[i][COL[lang]]);
