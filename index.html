@@ -564,6 +564,9 @@ const flushSession = () => { try { sessionFlush && sessionFlush(); } catch (e) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSession(); });
 addEventListener('pagehide', flushSession); addEventListener('beforeunload', flushSession);
 let user = null, isAdmin = false, pending = null, flash = '', myProf = {};
+const REFKEY = 'wg_ref';   // parrainage : code (= identifiant du parrain) lu dans le lien d'invitation ?ref=…
+try { const r = new URLSearchParams(location.search).get('ref'); if (r && /^[A-Za-z0-9]{6,64}$/.test(r)) localStorage.setItem(REFKEY, r); } catch (e) {}
+const refGet = () => { try { return localStorage.getItem(REFKEY) || ''; } catch (e) { return ''; } };
 
 const nm = u => u.displayName || (u.email || '').split('@')[0];
 function setWho() { $('#who').textContent = user ? nm(user).split(' ')[0] + (isAdmin ? ' (admin)' : '') : ''; const m = $('#me'); if (m) { m.hidden = !user; const ph = user ? safePhoto(myProf.photo) : ''; m.style.backgroundImage = ph ? `url(${ph})` : ''; m.style.backgroundSize = 'cover'; m.textContent = ph || !user ? '' : ((myProf.name || nm(user))[0] || '?').toUpperCase(); } }
@@ -585,7 +588,8 @@ auth.onAuthStateChanged(async u => {
   }
   $('#out').hidden = !user; try { WG.picker(!user); } catch (e) {} watchMsgs();
   if (user && myProf.onboarded === undefined && myProf.seen === undefined && !myProf.name) myProf.onboarded = false;
-  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now(), ...(myProf.joined ? {} : {joined: Date.parse(u.metadata && u.metadata.creationTime) || Date.now()})}, {merge: true}).then(() => myProf.onboarded === false ? db.collection('users').doc(user.uid).set({onboarded: false}, {merge: true}) : null).catch(() => {});
+  const refId = user && myProf.seen === undefined && !myProf.name && !myProf.refBy && refGet() !== user.uid ? refGet() : '';   // nouveau compte arrivé via un lien de parrainage
+  if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now(), ...(myProf.joined ? {} : {joined: Date.parse(u.metadata && u.metadata.creationTime) || Date.now()}), ...(refId ? {refBy: refId} : {})}, {merge: true}).then(() => { if (refId) { try { localStorage.removeItem(REFKEY); } catch (e) {} } return myProf.onboarded === false ? db.collection('users').doc(user.uid).set({onboarded: false}, {merge: true}) : null; }).catch(() => {});
   beatSync(); setWho(); Promise.resolve(route()).catch(() => {}).then(hideSplash); notifCheck();
 });
 $('#out').onclick = () => { bye(); stopRest(); auth.signOut(); };
@@ -928,7 +932,7 @@ async function musicPage() {
 async function plusPage() {
   const row = (h, t, sub) => `<a class="card item" href="${h}"><span><b>${t}</b><br><span class="mute">${sub}</span></span><span class="mute">›</span></a>`;
   app.innerHTML = `<h1>${esc(nm(user))}</h1><p class="mute">${esc(user.email)}${isAdmin ? ' · administrateur' : ''}</p>
-  ${row('#/profil', 'Mon profil', 'Photo, abonnés, statut')}${row('#/poids', 'Mon poids', 'Suivi et import Basic-Fit')}${row('#/membres', 'Membres', 'Trouver et suivre des personnes')}
+  ${row('#/profil', 'Mon profil', 'Photo, abonnés, statut')}${row('#/poids', 'Mon poids', 'Suivi et import Basic-Fit')}${row('#/membres', 'Membres', 'Trouver et suivre des personnes')}${row('#/parrainage', 'Parrainage', 'Invite tes amis à rejoindre WeakGym')}
   ${isAdmin ? '<h2>Administration</h2>' + row('#/activite', 'Activité', 'Ce que font les inscrits') + row('#/admin', 'Gérer les séances', 'Créer, modifier, copier') + row('#/inscrits', 'Inscrits', 'Bloquer, supprimer, écrire') : ''}
   ${prefsHtml()}<h2>Compte</h2><button id="lo" class="alt" style="width:100%">Se déconnecter</button>`;
   $('#lo').onclick = () => { bye(); stopRest(); auth.signOut(); };
@@ -1197,6 +1201,7 @@ async function route() {
           <h1>Weak<em>Gym</em></h1>
           <p class="lp-tag">Ta séance, prête quand tu l’es.</p>
           <p class="lead">Retrouve le programme du jour, coche chaque exercice, note tes charges et regarde tes progrès grimper semaine après semaine. Ou crée tes propres séances avec l’assistant.</p>
+          ${refGet() ? '<div class="card inst"><b>Tu as reçu une invitation.</b><br><span class="mute">Crée ton compte pour rejoindre ton ami(e) sur WeakGym.</span></div>' : ''}
           <button id="g" class="gbtn"><svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>Continuer avec Google</span></button>
           <label class="keep"><input type="checkbox" id="keep" ${keepPref() ? 'checked' : ''}><span>Rester connecté sur cet appareil</span></label>
           <p class="fine">Inscription en 10 secondes, sans mot de passe à retenir.</p>
@@ -1272,6 +1277,7 @@ async function route() {
     if (page === 'social') return await socialPage();
     if (page === 'profil') return await profilePage(id);
     if (page === 'membres') return await membersPage();
+    if (page === 'parrainage') return await referralPage();
     if (page === 'poids') return await weightPage();
     if (page === 'progres') return await progressPage();
     if (page === 'exercices') return await exercisesPage(id, extra);
@@ -1554,7 +1560,7 @@ const short = d => new Date(d + 'T12:00').toLocaleDateString(WG.loc, {day: 'nume
 const parseLoad = w => { const m = /(\d+(?:[.,]\d+)?)\s*kg/i.exec(w) || /(\d+(?:[.,]\d+)?)/.exec(w); return m ? parseFloat(m[1].replace(',', '.')) : null; };
 const CARDIO = /tapis|course|running|jogging|footing|marche|v[ée]lo|bike|cycling|elliptique|rameur|rowing machine|stepper|escalier|stair|natation|nage|corde [àa] sauter|saut [àa] la corde|jump rope|hiit|cardio|gainage|planche|plank|[ée]chauffement|[ée]tirement|stretch|yoga|boxe|sprint|airdyne|ski[- ]?erg|assault bike|crossfit|aquabike|trampoline|danse|zumba/i;
 const TIMETXT = /\b\d+(?:[.,]\d+)?\s*(?:min|mn|minutes?|sec|secondes?)\b|\b\d+\s*s\b|\b\d+\s*h\b/i;
-const isTime = e => { if (!e) return false; const p = String(e.load || '') + ' ' + String(e.reps || ''); if (/\bkg\b/i.test(p)) return false; return CARDIO.test(String(e.name || '')) || TIMETXT.test(p); };   // détecte les exercices « au temps » (tapis, vélo, gainage…) d'après le nom ou la durée prévue
+const isTime = e => !!e && e.min === true;   // kg par défaut : minutes uniquement si la coche « Exercice en minutes » est activée
 const uOf = e => isTime(e) ? 'min' : 'kg';
 const dispW = (w, u) => u === 'min' ? String(w == null ? '' : w).replace(/\bkg\b/gi, 'min') : w;   // corrige aussi l'affichage des anciennes saisies en kg
 const fmtNum = n => String(Math.round(n * 100) / 100).replace('.', ',');
@@ -1900,12 +1906,14 @@ async function editSession(id, preset) {
       <input data-i="${i}" data-k="name" maxlength="${LIM.name}" list="exlist" value="${esc(e.name)}" placeholder="Nom de l'exercice" aria-label="Nom de l'exercice ${i + 1}">
       <div class="row" style="margin-top:8px">${field(i, 'sets', 'Séries', e.sets)}${field(i, 'reps', 'Reps', e.reps)}${field(i, 'load', 'Charge', e.load)}${field(i, 'rest', 'Repos', e.rest)}</div>
       <div style="margin-top:8px">${field(i, 'notes', 'Consigne (tempo, technique…)', e.notes)}</div>
+      <label class="keep"><input type="checkbox" data-min="${i}" ${isTime(e) ? 'checked' : ''}><span>Exercice en minutes (décoché = en kg)</span></label>
       <div style="margin-top:8px"><input type="url" inputmode="url" autocapitalize="off" maxlength="${LIM.video}" data-i="${i}" data-k="video" value="${esc(e.video)}" placeholder="Lien vidéo YouTube ou Vimeo (optionnel)" aria-label="Lien vidéo"></div>
       <p class="row" style="margin:10px 0 0;flex:none"><button class="link" data-up="${i}" ${i ? '' : 'disabled'}>Monter</button><button class="link" data-down="${i}" ${i < s.exercises.length - 1 ? '' : 'disabled'}>Descendre</button><button class="link" data-cp="${i}">Dupliquer</button><button class="link" data-rm="${i}">Retirer</button></p></div>`).join('')}
     <p class="row stick"><button class="alt" id="add">+ Ajouter un exercice</button><button id="sv">Enregistrer la séance</button></p>`;
     const read = () => { s.title = $('#t').value; s.date = $('#d').value; s.cat = $('#cat').value; if ($('#rep')) s.rep = +$('#rep').value; if ($('#bulk')) s.bulk = $('#bulk').value; app.querySelectorAll('[data-k]').forEach(i => s.exercises[i.dataset.i][i.dataset.k] = i.value); };
     const on = (sel, f) => app.querySelectorAll(sel).forEach(b => b.onclick = () => { read(); f(+Object.values(b.dataset)[0]); draw(); });
     const empty = () => s.exercises.length === 1 && !s.exercises[0].name.trim();
+    app.querySelectorAll('[data-min]').forEach(c => c.onchange = () => { s.exercises[+c.dataset.min].min = c.checked; });
     $('#add').onclick = () => { read(); s.exercises.push(blank()); draw(); };
     if ($('#tplgo')) $('#tplgo').onclick = () => { read(); const t = existing.find(x => x.id === $('#tpl').value); if (!t) return; if (!s.title.trim()) s.title = t.title; if (!s.cat && t.cat) s.cat = t.cat; s.exercises = clone(t.exercises); draw(); };
     if ($('#bulkgo')) $('#bulkgo').onclick = () => { read(); const n = parseLines(s.bulk).filter(e => e.name); if (!n.length) return; s.exercises = (empty() ? [] : s.exercises).concat(n).slice(0, 60); s.bulk = ''; draw(); };
@@ -1915,7 +1923,7 @@ async function editSession(id, preset) {
     on('[data-down]', i => { if (i < s.exercises.length - 1) [s.exercises[i + 1], s.exercises[i]] = [s.exercises[i], s.exercises[i + 1]]; });
     $('#sv').onclick = async () => {
       read();
-      const ex = s.exercises.filter(e => e.name.trim()).map(e => { const o = {}; Object.keys(LIM).forEach(k => o[k] = String(e[k] || '').trim().slice(0, LIM[k])); return o; });
+      const ex = s.exercises.filter(e => e.name.trim()).map(e => { const o = {}; Object.keys(LIM).forEach(k => o[k] = String(e[k] || '').trim().slice(0, LIM[k])); o.min = isTime(e); return o; });
       const bad = ex.find(e => e.video && !okUrl(e.video)); if (bad) return alert('Lien vidéo invalide pour « ' + bad.name + ' » : https:// et YouTube ou Vimeo uniquement.');
       if (!s.title.trim() || !ex.length || !/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return alert('Il faut un titre, une date et au moins un exercice.');
       $('#sv').disabled = true;
@@ -2014,6 +2022,36 @@ async function membersPage() {
   app.innerHTML = '<h1>Membres</h1><input id="mq" type="search" placeholder="Rechercher un nom…" aria-label="Rechercher"><div id="ml" style="margin-top:8px"></div>';
   $('#mq').oninput = e => { q = e.target.value.trim().toLowerCase(); draw(); };
   draw();
+}
+
+// ----- Parrainage : lien d'invitation personnel + liste des filleuls -----
+async function referralPage() {
+  const base = location.href.split('#')[0].split('?')[0], link = base + '?ref=' + encodeURIComponent(user.uid);
+  const txt = 'Rejoins-moi sur WeakGym, l’appli pour suivre tes séances et tes progrès :';
+  app.innerHTML = `<h1>Parrainage</h1><p class="mute">Invite tes amis à rejoindre WeakGym : partage ton lien personnel. Ceux qui créent un compte avec ce lien apparaissent ci-dessous.</p>
+  <div class="card"><label for="rl" style="margin-top:0">Ton lien d’invitation</label>
+    <div class="pw"><input id="rl" readonly value="${esc(link)}" aria-label="Ton lien d’invitation"><button type="button" id="rc">Copier</button></div>
+    <p class="row" style="margin:12px 0 0"><button type="button" class="alt" id="rs" ${navigator.share ? '' : 'hidden'}>Partager…</button><a class="btn alt" target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encodeURIComponent(txt + ' ' + link)}">WhatsApp</a></p>
+    <p id="rm" class="tag" role="status" hidden></p></div>
+  <h2 id="rh">Mes filleuls</h2><div id="rf"><p class="mute">Chargement…</p></div>`;
+  const say = t => { const m = $('#rm'); m.textContent = t; m.hidden = false; };
+  $('#rc').onclick = async () => {
+    try { await navigator.clipboard.writeText(link); say('Lien copié.'); }
+    catch (e) { const i = $('#rl'); i.select(); try { document.execCommand('copy'); say('Lien copié.'); } catch (e2) { say('Sélectionne le lien et copie-le.'); } }
+  };
+  $('#rs').onclick = () => { navigator.share({title: 'WeakGym', text: txt, url: link}).catch(() => {}); };
+  $('#rl').onfocus = e => e.target.select();
+  try {
+    const [sn, fo] = await Promise.all([db.collection('users').where('refBy', '==', user.uid).get(), db.collection('follows').where('from', '==', user.uid).get()]);
+    let fol = new Set(fo.docs.map(d => d.data().to));
+    const kids = sn.docs.map(d => ({uid: d.id, ...d.data()})).filter(u => !u.blocked && u.uid !== user.uid).sort((a, b) => (b.joined || 0) - (a.joined || 0));
+    $('#rh').textContent = kids.length ? `Mes filleuls (${kids.length})` : 'Mes filleuls';
+    const draw = () => {
+      $('#rf').innerHTML = kids.length ? kids.map(u => memRow(u, user.uid, fol)).join('') : '<p class="mute">Personne pour l’instant. Partage ton lien pour inviter tes amis !</p>';
+      wireFollow($('#rf'), async () => { const m = await db.collection('follows').where('from', '==', user.uid).get(); fol = new Set(m.docs.map(d => d.data().to)); draw(); });
+    };
+    draw();
+  } catch (e) { $('#rf').innerHTML = '<p class="mute">Impossible de charger la liste pour le moment.</p>'; }
 }
 
 function readPhoto(file) {
@@ -2494,7 +2532,7 @@ async function astPro(raw, t) {
 
 // ====== Ma séance perso : séances privées par utilisateur (collection « mysessions ») ======
 const PC = () => db.collection('mysessions');
-const cleanEx = a => (a || []).slice(0, 40).map(e => ({name: String(e.name || '').trim().slice(0, 80), sets: String(e.sets || '').slice(0, 10), reps: String(e.reps || '').slice(0, 20), load: String(e.load || '').slice(0, 30), rest: String(e.rest || '').slice(0, 20), notes: String(e.notes || '').slice(0, 200)})).filter(e => e.name);
+const cleanEx = a => (a || []).slice(0, 40).map(e => ({name: String(e.name || '').trim().slice(0, 80), sets: String(e.sets || '').slice(0, 10), reps: String(e.reps || '').slice(0, 20), load: String(e.load || '').slice(0, 30), rest: String(e.rest || '').slice(0, 20), notes: String(e.notes || '').slice(0, 200), min: isTime(e)})).filter(e => e.name);
 async function savePerso(title, exercises, id, cat) {
   const ex = cleanEx(exercises); if (!ex.length) throw new Error('Ajoute au moins un exercice.');
   const data = {title: String(title || '').trim().slice(0, 80) || 'Ma séance', exercises: ex, updatedAt: Date.now()};
@@ -2512,6 +2550,7 @@ function persoEditor(s, done) {
     <datalist id="pxl">${known.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
     ${st.ex.map((e, i) => `<div class="card" style="padding:12px"><input data-i="${i}" data-k="name" list="pxl" maxlength="80" value="${esc(e.name)}" placeholder="Exercice ${i + 1}" aria-label="Exercice ${i + 1}">
       <div class="row" style="margin-top:8px">${inp(i, 'sets', 'Séries', e.sets, 'numeric')}${inp(i, 'reps', 'Reps', e.reps)}${inp(i, 'load', 'Charge', e.load)}${inp(i, 'rest', 'Repos', e.rest)}</div>
+      <label class="keep"><input type="checkbox" data-min="${i}" ${isTime(e) ? 'checked' : ''}><span>Exercice en minutes (décoché = en kg)</span></label>
       <div class="row" style="margin-top:8px"><button type="button" class="alt" data-u="${i}" aria-label="Monter" ${i ? '' : 'disabled'}>↑</button><button type="button" class="alt" data-dn="${i}" aria-label="Descendre" ${i < st.ex.length - 1 ? '' : 'disabled'}>↓</button><button type="button" class="del" data-r="${i}">Retirer</button></div></div>`).join('')}
     <p><button type="button" class="alt" id="padd" style="width:100%">+ Ajouter un exercice</button></p><p id="perr" class="err" role="alert" hidden></p>
     <p class="row" style="margin-top:14px"><button type="button" class="alt" id="pcx">Annuler</button><button type="button" id="psv">Enregistrer</button></p></div>`;
@@ -2519,6 +2558,7 @@ function persoEditor(s, done) {
     q('#pt').oninput = e => { st.title = e.target.value; };
     q('#pcat').onchange = e => { st.cat = e.target.value; };
     el.querySelectorAll('input[data-k]').forEach(i => i.oninput = e => { st.ex[+i.dataset.i][i.dataset.k] = e.target.value; });
+    el.querySelectorAll('[data-min]').forEach(c => c.onchange = () => { st.ex[+c.dataset.min].min = c.checked; });
     el.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { st.ex.splice(+b.dataset.r, 1); if (!st.ex.length) st.ex.push({name: '', sets: '3', reps: '10', load: '', rest: '', notes: ''}); paint(); });
     const mv = (i, d) => { const j = i + d; [st.ex[i], st.ex[j]] = [st.ex[j], st.ex[i]]; paint(); };
     el.querySelectorAll('[data-u]').forEach(b => b.onclick = () => mv(+b.dataset.u, -1));
@@ -3024,7 +3064,7 @@ const WGShare = (() => {
       if (!done && !has) return;
       if (done) n++;
       const reps = parseInt(e.reps) || 0;
-      if (has) nums.forEach(v => { nsets++; if (reps) vol += v * reps; }); else nsets += parseInt(e.sets) || 0;
+      if (has) nums.forEach(v => { nsets++; if (reps && !isTime(e)) vol += v * reps; }); else nsets += parseInt(e.sets) || 0;
       const best = has ? Math.max.apply(null, nums) : null; let pr = false;
       if (best != null && hist) {
         const k = e.name.trim().toLowerCase(), prev = hist.entries.filter(x => x.key === k && x.id !== id && x.num != null && x.date <= s.date);
@@ -3032,7 +3072,7 @@ const WGShare = (() => {
       }
       if (pr) prs++;
       const plan = e.sets && e.reps ? e.sets + ' × ' + e.reps : '';
-      items.push({n: e.name, d: [plan, has ? fmtNum(best) + ' kg' : ''].filter(Boolean).join(' · '), pr});
+      items.push({n: e.name, d: [plan, has ? fmtNum(best) + ' ' + uOf(e) : ''].filter(Boolean).join(' · '), pr});
     });
     const total = s.exercises.length, full = n > 0 && n === total;
     const stats = [{v: n + '/' + total, l: 'Exercices'}, {v: String(nsets), l: 'Séries'}];
