@@ -73,6 +73,8 @@ st.textContent = `
 .wc-q .wc-qt{flex:1 1 170px;min-width:0}.wc-q .wc-qt b{font-weight:600}
 .wc-q em{font-style:normal;font:800 18px var(--hf);color:var(--acc);display:inline-flex;align-items:center;gap:5px}
 .wc-q.dn{opacity:.75}
+.wc-net .ic{width:56%;height:56%}
+.wc-gh{font:700 16px var(--hf);color:var(--mute);margin:20px 0 4px;letter-spacing:-.01em}
 #wc-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,30px);opacity:0;z-index:80;display:flex;align-items:center;gap:10px;background:var(--card);color:var(--ink);border:1px solid color-mix(in srgb,var(--acc) 55%,var(--line));border-radius:99px;padding:10px 18px 10px 12px;font-weight:600;box-shadow:var(--sh);transition:transform .3s cubic-bezier(.2,.8,.3,1),opacity .3s;pointer-events:none;max-width:calc(100vw - 24px)}
 #wc-toast.on{transform:translate(-50%,0);opacity:1}
 @media(max-width:600px){#wc-toast{bottom:calc(92px + env(safe-area-inset-bottom))}}
@@ -109,15 +111,15 @@ async function getWallet() {
 const balanceOf = w => Math.max(0, w.earned - w.spent);
 
 /* Gain : crée la preuve (wcClaims) ET augmente le solde dans la même transaction. Une seule fois par séance / par jour. */
-async function claim(kind, ref) {
-  const uid = user.uid, amount = REWARD[kind], id = `${uid}_${kind}_${ref}`;
+async function claim(kind, ref, amount = REWARD[kind], extra = {}) {
+  const uid = user.uid, id = `${uid}_${kind}_${ref}`;
   const cref = db.collection('wcClaims').doc(id), wref = db.collection('wallet').doc(uid);
   let gained = false;
   await db.runTransaction(async tx => {
     gained = false;
     if ((await tx.get(cref)).exists) return;
     const w = await tx.get(wref), d = w.exists ? w.data() : null;
-    tx.set(cref, {uid, kind, ref, amount, at: Date.now()});
+    tx.set(cref, {uid, kind, ref, amount, at: Date.now(), ...extra});
     if (d) tx.update(wref, {earned: (d.earned || 0) + amount, last: id, lastKind: 'claim'});
     else tx.set(wref, {uid, earned: amount, spent: 0, last: id, lastKind: 'claim'});
     gained = true;
@@ -215,20 +217,74 @@ window.wcSocialsMount = socialsMount;
 /* ---------- quêtes : suivre WeakGym sur un réseau ---------- */
 const VISIT = n => `wg_q_${user.uid}_${n}`, WAIT = 8;   // le bouton « Valider » se débloque 8 s après le clic sur « Y aller »
 const visitedAt = n => { try { return +localStorage.getItem(VISIT(n)) || 0; } catch (e) { return 0; } };
-function questsHtml(socials, claimed) {
-  const list = NETS.filter(n => socials[n.id]);
-  if (!list.length) return `<div class="card wc-empty">Aucune quête pour le moment.${isAdmin ? '<br>Ajoute les liens des réseaux : Plus › Suis WeakGym › Modifier les liens.' : ''}</div>`;
-  return list.map(n => {
-    const done = claimed.has(`${user.uid}_quete_${n.id}`), v = visitedAt(n.id);
+/* défis : montants et conditions identiques aux règles Firestore (fonction defiOk) */
+ICO.bell = '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>';
+ICO.flame = '<path d="M12 22a7 7 0 0 0 7-7c0-4-3-6-4-10-2 1-3 3-3 5-1-1-2-2-2-4-3 2-5 5-5 9a7 7 0 0 0 7 7z"/>';
+ICO.bag = ICO.shop;
+const cnt = (c, k) => (k === 'seance' ? c.seance : c.poids).length;
+const DEFIS = [
+  /* profil */
+  {g: 'Mon profil', id: 'photo', title: 'Ajoute ta photo de profil', sub: 'Montre-toi à la communauté', amount: 15, ic: 'user', href: '#/profil', cur: c => +(typeof c.prof.photo === 'string' && c.prof.photo.length > 0), goal: 1},
+  {g: 'Mon profil', id: 'bio', title: 'Écris ta bio', sub: 'Objectif, salle, programme…', amount: 10, ic: 'pen', href: '#/profil', cur: c => +(typeof c.prof.bio === 'string' && c.prof.bio.trim().length > 0), goal: 1},
+  {g: 'Mon profil', id: 'notif', title: 'Active les rappels de séance', sub: 'Un rappel pour ne pas rater ta séance', amount: 10, ic: 'bell', href: '#/plus', cur: c => +(c.prof.notif === true), goal: 1},
+  {g: 'Mon profil', id: 'wtarget', title: 'Fixe ton objectif de poids', sub: 'Dans « Mon poids »', amount: 10, ic: 'scale', href: '#/poids', cur: c => +(c.prof.wtarget != null), goal: 1},
+  {g: 'Mon profil', id: 'wgoal', title: 'Choisis ton objectif de séances', sub: 'Combien de séances par semaine ?', amount: 10, ic: 'cal', href: '#/progres', cur: c => +(c.prof.wgoal != null), goal: 1},
+  /* séances terminées (preuves = tes récompenses de séance) */
+  {g: 'Séances', id: 'seance1', title: 'Termine ta première séance', sub: 'Coche tous les exercices', amount: 15, ic: 'dumb', href: '#/calendrier', pk: 'seance', cur: c => cnt(c, 'seance'), goal: 1},
+  {g: 'Séances', id: 'seance5', title: 'Termine 5 séances', sub: 'Séances WeakGym terminées', amount: 30, ic: 'dumb', href: '#/calendrier', pk: 'seance', cur: c => cnt(c, 'seance'), goal: 5},
+  {g: 'Séances', id: 'seance10', title: 'Termine 10 séances', sub: 'Séances WeakGym terminées', amount: 60, ic: 'dumb', href: '#/calendrier', pk: 'seance', cur: c => cnt(c, 'seance'), goal: 10},
+  /* pesées (une par jour) */
+  {g: 'Pesées', id: 'poids1', title: 'Fais ta première pesée', sub: 'Enregistre ton poids du jour', amount: 10, ic: 'scale', href: '#/poids', pk: 'poids', cur: c => cnt(c, 'poids'), goal: 1},
+  {g: 'Pesées', id: 'poids5', title: 'Enregistre 5 pesées', sub: 'Un jour différent à chaque fois', amount: 20, ic: 'scale', href: '#/poids', pk: 'poids', cur: c => cnt(c, 'poids'), goal: 5},
+  {g: 'Pesées', id: 'poids10', title: 'Enregistre 10 pesées', sub: 'Un jour différent à chaque fois', amount: 40, ic: 'scale', href: '#/poids', pk: 'poids', cur: c => cnt(c, 'poids'), goal: 10},
+  /* fidélité : ancienneté du compte */
+  {g: 'Fidélité', id: 'age7', title: 'Une semaine avec WeakGym', sub: 'jours', amount: 10, ic: 'flame', unit: 'jours', cur: c => c.days, goal: 7},
+  {g: 'Fidélité', id: 'age30', title: 'Un mois avec WeakGym', sub: 'jours', amount: 25, ic: 'flame', unit: 'jours', cur: c => c.days, goal: 30},
+  {g: 'Fidélité', id: 'age90', title: 'Trois mois avec WeakGym', sub: 'jours', amount: 50, ic: 'flame', unit: 'jours', cur: c => c.days, goal: 90},
+  /* boutique */
+  {g: 'Boutique', id: 'achat1', title: 'Fais ton premier achat', sub: 'Dépense des WeakCoins dans la boutique', amount: 10, ic: 'bag', scroll: true, cur: c => +(c.w.spent > 0), goal: 1},
+  {g: 'Boutique', id: 'cumul500', title: 'Cumule 500 WeakCoins', sub: 'WeakCoins gagnés au total', amount: 25, ic: 'bag', href: '#/calendrier', cur: c => c.w.earned, goal: 500},
+  {g: 'Boutique', id: 'cumul1000', title: 'Cumule 1 000 WeakCoins', sub: 'WeakCoins gagnés au total', amount: 50, ic: 'bag', href: '#/calendrier', cur: c => c.w.earned, goal: 1000}
+];
+const wcCtx = (prof, cl, w) => ({prof: prof || {}, w, seance: cl.seance, poids: cl.poids, days: prof && prof.joined ? Math.floor((Date.now() - prof.joined) / 864e5) : 0});
+function questsHtml(socials, cl, prof, w) {
+  if (!ICO.scale) ICO.scale = '<path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>';
+  const c = wcCtx(prof, cl, w);
+  const row = (tile, title, sub, amount, act, done) => `<div class="card wc-q ${done ? 'dn' : ''}">${tile}<span class="wc-qt"><b>${esc(title)}</b><br><span class="mute">${esc(sub)}</span></span><em>+${amount}${coin(18)}</em>${act}</div>`;
+  const dfs = DEFIS.map(d => {
+    const done = cl.ids.has(`${user.uid}_defi_${d.id}`), cur = d.cur(c), ready = !done && cur >= d.goal;
+    const sub = done ? 'Quête accomplie' : d.goal > 1 ? `${fmtN(Math.min(cur, d.goal))} / ${fmtN(d.goal)}${d.unit ? ' ' + d.unit : ''}${d.unit ? '' : ' · ' + d.sub}` : d.sub;
+    const act = done ? '<span class="tag">✓ Terminée</span>' : ready ? `<button data-df="${d.id}">Récupérer</button>`
+      : d.href ? `<a class="btn" href="${d.href}">Y aller</a>` : d.scroll ? '<button class="alt" data-scroll="1">Voir les articles</button>'
+      : `<span class="mute" style="font-weight:600">Dans ${fmtN(d.goal - cur)} j</span>`;
+    return {g: d.g, done, html: row(`<span class="wc-net" style="width:44px;height:44px;background:var(--acc);color:var(--acc-ink)">${icon(d.ic)}</span>`, d.title, sub, d.amount, act, done)};
+  });
+  const nets = NETS.filter(n => socials[n.id]).map(n => {
+    const done = cl.ids.has(`${user.uid}_quete_${n.id}`), v = visitedAt(n.id);
     const act = done ? '<span class="tag">✓ Terminée</span>'
       : v ? `<button data-ok="${n.id}" disabled>Valider</button>`
       : `<a class="btn" data-go="${n.id}" href="${esc(socials[n.id])}" target="_blank" rel="noopener noreferrer">Y aller</a>`;
-    return `<div class="card wc-q ${done ? 'dn' : ''}">${netLogo(n, 44)}<span class="wc-qt"><b>Suis WeakGym sur ${n.name}</b><br><span class="mute">${done ? 'Quête accomplie' : 'Abonne-toi, puis reviens valider'}</span></span><em>+${REWARD.quete}${coin(18)}</em>${act}</div>`;
+    return {g: 'Réseaux WeakGym', done, html: row(netLogo(n, 44), `Suis WeakGym sur ${n.name}`, done ? 'Quête accomplie' : 'Abonne-toi, puis reviens valider', REWARD.quete, act, done)};
+  });
+  const all = [...dfs, ...nets], nb = all.filter(x => x.done).length;
+  const groups = ['Mon profil', 'Séances', 'Pesées', 'Fidélité', 'Boutique', 'Réseaux WeakGym'];
+  return `<p class="mute" style="margin:0">${nb} / ${all.length} quêtes terminées</p>` + groups.map(g => {
+    const l = all.filter(x => x.g === g);
+    return l.length ? `<h3 class="wc-gh">${g}</h3>${l.map(x => x.html).join('')}`
+      : g === 'Réseaux WeakGym' ? `<h3 class="wc-gh">${g}</h3><div class="card wc-empty">Aucune quête réseau pour le moment.${isAdmin ? '<br>Ajoute les liens : Plus › Suis WeakGym › Modifier les liens.' : ''}</div>` : '';
   }).join('');
 }
 let qTimer = 0;
-function wireQuests() {
+function wireQuests(cl) {
   clearInterval(qTimer);
+  app.querySelectorAll('[data-scroll]').forEach(b => b.onclick = () => { const g = app.querySelector('.wc-grid'); if (g) g.scrollIntoView({behavior: 'smooth', block: 'center'}); });
+  app.querySelectorAll('[data-df]').forEach(b => b.onclick = async () => {
+    const d = DEFIS.find(x => x.id === b.dataset.df); b.disabled = true;
+    try {
+      const extra = d.pk ? {proofs: (d.pk === 'seance' ? cl.seance : cl.poids).slice(0, d.goal)} : {};
+      const g = await claim('defi', d.id, d.amount, extra); if (g) wcToast(`+${g} WeakCoins · ${d.title}`); boutiquePage();
+    } catch (e) { console.info('WeakCoin : défi non validé', e && e.code); wcToast('Validation impossible, réessaie.'); b.disabled = false; }
+  });
   const tick = () => {
     const bs = app.querySelectorAll('[data-ok]');
     if (!bs.length) { clearInterval(qTimer); return; }
@@ -256,7 +312,7 @@ async function boutiquePage() {
     getWallet(),
     db.collection('users').doc(user.uid).get().catch(() => null),
     loadSocials(),
-    db.collection('wcClaims').where('uid', '==', user.uid).get().then(q => new Set(q.docs.map(d => d.id))).catch(() => new Set()),
+    db.collection('wcClaims').where('uid', '==', user.uid).get().then(q => ({ids: new Set(q.docs.map(d => d.id)), seance: q.docs.filter(d => d.data().kind === 'seance').map(d => d.data().ref), poids: q.docs.filter(d => d.data().kind === 'poids').map(d => d.data().ref)})).catch(() => ({ids: new Set(), seance: [], poids: []})),
     db.collection('shop').get().then(q => q.docs.forEach(d => { prices[d.id] = d.data().price; })).catch(() => {})
   ]);
   if (ud && ud.exists && Array.isArray(ud.data().items)) myProf.items = ud.data().items;
@@ -264,6 +320,7 @@ async function boutiquePage() {
   if (isAdmin) await Promise.all(CATALOG.filter(it => prices[it.id] !== it.price).map(it =>
     db.collection('shop').doc(it.id).set({name: it.name, price: it.price}).then(() => { prices[it.id] = it.price; }).catch(e => console.warn('Boutique : prix non publié', e))));
 
+  const prof = ud && ud.exists ? ud.data() : myProf;
   if (!ICO.scale) ICO.scale = '<path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>';
   const owned = new Set(myProf.items || []);
   let bal = balanceOf(w);
@@ -284,16 +341,16 @@ async function boutiquePage() {
     <div class="card wc-bal">${coin(64)}<div><small>Mon solde</small><b id="wcn">${fmtN(bal)}<span>WeakCoins</span></b></div></div>
     <h2>Articles</h2>
     ${CATALOG.length ? `<div class="wc-grid">${CATALOG.map(card).join('')}</div><p class="mute" style="font-size:14px">D’autres articles arrivent bientôt.</p>` : '<div class="card wc-empty">La boutique est vide pour le moment. Reviens bientôt !</div>'}
-    <h2>Quêtes</h2>${questsHtml(socials, claimed)}
+    <h2>Quêtes</h2>${questsHtml(socials, claimed, prof, w)}
     <h2>Gagner des WeakCoins</h2>
     <div class="card"><ul class="wc-how">
       <li>${icon('dumb')}<span><b>Terminer une séance</b><br><span class="mute">Coche tous les exercices (une fois par séance)</span></span><em>+${REWARD.seance}${coin(18)}</em></li>
-      <li>${icon('user')}<span><b>Terminer une quête</b><br><span class="mute">Suivre WeakGym sur un réseau (une fois par réseau)</span></span><em>+${REWARD.quete}${coin(18)}</em></li>
+      <li>${icon('user')}<span><b>Terminer des quêtes</b><br><span class="mute">Profil, séances, pesées, fidélité, réseaux : une fois chacune</span></span><em>10 à 60${coin(18)}</em></li>
       <li>${icon('scale')}<span><b>Enregistrer ta pesée du jour</b><br><span class="mute">Une fois par jour</span></span><em>+${REWARD.poids}${coin(18)}</em></li>
     </ul></div>`;
   app.querySelectorAll('.wc-how .ic').forEach(i => { i.style.cssText = 'width:26px;height:26px;color:var(--acc);flex:none'; });
 
-  wireQuests(socials);
+  wireQuests(claimed);
   app.querySelectorAll('[data-b]').forEach(b => b.onclick = () => {
     const it = CATALOG.find(x => x.id === b.dataset.b), price = prices[it.id];
     const m = wcSheet(`<h2 style="margin-top:0">Confirmer l’achat</h2>
