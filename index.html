@@ -606,7 +606,8 @@ const ICO = {
   dumb: '<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',
   user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>',
   planet: '<circle cx="12" cy="12" r="5"/><g transform="translate(12 12) rotate(-22)"><path d="M-10 0A10 3.4 0 0 0 10 0"/><path d="M-10 0A10 3.4 0 0 1-3.9-3.13M3.9-3.13A10 3.4 0 0 1 10 0"/></g>',
-  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM21 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM21 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+  shop: '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0"/>'
 };
 const icon = n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[n]}</svg>`;
 let unread = 0, unsub = null, pageUnsub = null;
@@ -614,7 +615,7 @@ function nav() {
   try { fab(); } catch (e) {}
   document.title = (unread ? `(${unread}) ` : '') + 'WeakGym';
   const h = location.hash || '#/';
-  const l = [['#/', 'home', 'Accueil', ['#/']], ['#/calendrier', 'cal', 'Calendrier', ['#/calendrier', '#/seances', '#/seance/', '#/historique']], ['#/exercices', 'dumb', 'Exercices', ['#/exercices']], ['#/perso', 'user', '<span class="dk">Ma séance</span><span class="mb">Perso</span>', ['#/perso']], ['#/progres', 'chart', 'Progrès', ['#/progres']], ['#/musique', 'music', 'Musique', ['#/musique']], ['#/social', 'planet', 'Social', ['#/social', '#/profil', '#/membres', '#/messages']]];
+  const l = [['#/', 'home', 'Accueil', ['#/']], ['#/calendrier', 'cal', 'Calendrier', ['#/calendrier', '#/seances', '#/seance/', '#/historique']], ['#/exercices', 'dumb', 'Exercices', ['#/exercices']], ['#/perso', 'user', '<span class="dk">Ma séance</span><span class="mb">Perso</span>', ['#/perso']], ['#/social', 'planet', 'Social', ['#/social', '#/profil', '#/membres', '#/messages']], ['#/musique', 'music', 'Musique', ['#/musique']], ['#/boutique', 'shop', 'Boutique', ['#/boutique']]];
   $('#nav').innerHTML = user ? l.map(([a, i, t, m]) => `<a href="${a}" class="${(a === '#/' ? h === '#/' : m.some(p => h.startsWith(p))) ? 'on' : ''}">${icon(i)}<span>${t}</span>${a === '#/social' && unread ? `<span class="bd">${unread}</span>` : ''}</a>`).join('') : '';
 }
 function watchMsgs() {
@@ -1280,6 +1281,7 @@ async function route() {
     if (page === 'parrainage') return await referralPage();
     if (page === 'poids') return await weightPage();
     if (page === 'progres') return await progressPage();
+    if (page === 'boutique') return await boutiquePage();
     if (page === 'exercices') return await exercisesPage(id, extra);
     if (page === 'messages') return await messagesPage(id);
     if (page === 'seances') return await listSessions();
@@ -1447,6 +1449,7 @@ async function viewSession(id, label) {
     const sets = {}; Object.keys(mine.sets).forEach(i => { const a = mine.sets[i].map(x => String(x).trim().slice(0, 30)); if (a.some(Boolean)) sets[i] = a; });
     const t0 = Date.now();
     await logRef.set({uid: user.uid, name: nm(user), sessionId: id, done: mine.done, w: mine.w, sets, note: mine.note, updatedAt: t0});
+    try { window.wcSession && wcSession(id, s.exercises.length, mine.done); } catch (e) {}   // WeakCoin : récompense si la séance est terminée
     if (dirtyAt <= t0) { try { localStorage.removeItem(dk); } catch (e) {} }   // rien de plus récent à envoyer : le brouillon n'est plus utile
     delete histCache[user.uid];
     if (manual) { if ($('#ok')) $('#ok').textContent = 'Enregistré'; } else render();
@@ -2187,7 +2190,7 @@ async function weightPage() {
     er.hidden = true;
     if (!d || !(kg >= 20 && kg <= 300)) { er.textContent = 'Entre une date et un poids entre 20 et 300 kg.'; er.hidden = false; return; }
     const b = $('#wsv'); b.disabled = true;
-    try { await col.doc(user.uid + '_' + d).set({uid: user.uid, date: d, kg: Math.round(kg * 10) / 10, src: $('#ws').value, at: Date.now()}); $('#wk').value = ''; await load(); draw(); }
+    try { await col.doc(user.uid + '_' + d).set({uid: user.uid, date: d, kg: Math.round(kg * 10) / 10, src: $('#ws').value, at: Date.now()}); $('#wk').value = ''; try { window.wcWeight && wcWeight(d); } catch (e) {} await load(); draw(); }
     catch (e) { er.textContent = 'Erreur : ' + e.message; er.hidden = false; }
     b.disabled = false;
   };
@@ -3313,6 +3316,7 @@ const WGShare = (() => {
 })();
 </script>
 <script src="social.js"></script>
+<script src="boutique.js"></script>
 <script>
 /* Chronomètre facultatif : bouton ⏱ sur les séances. Il continue même si tu quittes la page ou l'appli. */
 (() => {
