@@ -75,6 +75,15 @@ st.textContent = `
 .wc-q.dn{opacity:.75}
 .wc-net .ic{width:56%;height:56%}
 .wc-gh{font:700 16px var(--hf);color:var(--mute);margin:20px 0 4px;letter-spacing:-.01em}
+.wc-dh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px}
+.wc-dh .wc-gh{margin:0 0 4px}
+.wc-cd{font-weight:600;font-size:14px;color:var(--mute)}.wc-cd b{font:800 16px var(--hf);color:var(--acc);font-variant-numeric:tabular-nums;margin-left:4px}
+.wc-cam{position:relative;margin:10px auto;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:3/4;max-height:58vh;width:auto}
+.wc-cam video,.wc-cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.wc-cam.mir video,.wc-cam.mir canvas{transform:scaleX(-1)}
+.wc-cnt{position:absolute;left:10px;top:10px;display:flex;align-items:baseline;gap:6px;background:rgba(0,0,0,.55);color:#fff;border-radius:12px;padding:4px 12px}
+.wc-cnt b{font:800 38px/1 var(--hf)}.wc-cnt span{font-weight:600;opacity:.8}
+.wc-cs{min-height:3em;margin:6px 0 0;text-align:center;font-weight:600}
 #wc-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,30px);opacity:0;z-index:80;display:flex;align-items:center;gap:10px;background:var(--card);color:var(--ink);border:1px solid color-mix(in srgb,var(--acc) 55%,var(--line));border-radius:99px;padding:10px 18px 10px 12px;font-weight:600;box-shadow:var(--sh);transition:transform .3s cubic-bezier(.2,.8,.3,1),opacity .3s;pointer-events:none;max-width:calc(100vw - 24px)}
 #wc-toast.on{transform:translate(-50%,0);opacity:1}
 @media(max-width:600px){#wc-toast{bottom:calc(92px + env(safe-area-inset-bottom))}}
@@ -268,7 +277,7 @@ function questsHtml(socials, cl, prof, w) {
   });
   const all = [...dfs, ...nets], nb = all.filter(x => x.done).length;
   const groups = ['Mon profil', 'Séances', 'Pesées', 'Fidélité', 'Boutique', 'Réseaux WeakGym'];
-  return `<p class="mute" style="margin:0">${nb} / ${all.length} quêtes terminées</p>` + groups.map(g => {
+  return dailyHtml(cl) + `<h3 class="wc-gh" style="margin-top:26px">Quêtes uniques</h3><p class="mute" style="margin:0">${nb} / ${all.length} quêtes terminées</p>` + groups.map(g => {
     const l = all.filter(x => x.g === g);
     return l.length ? `<h3 class="wc-gh">${g}</h3>${l.map(x => x.html).join('')}`
       : g === 'Réseaux WeakGym' ? `<h3 class="wc-gh">${g}</h3><div class="card wc-empty">Aucune quête réseau pour le moment.${isAdmin ? '<br>Ajoute les liens : Plus › Suis WeakGym › Modifier les liens.' : ''}</div>` : '';
@@ -302,6 +311,168 @@ function wireQuests(cl) {
     setTimeout(() => { a.replaceWith(b); arm(b); tick(); clearInterval(qTimer); qTimer = setInterval(tick, 1000); }, 400);
   }));
   if (app.querySelector('[data-ok]')) { tick(); qTimer = setInterval(tick, 1000); }
+}
+
+/* ---------- quêtes du jour : se réinitialisent à minuit (heure locale du téléphone) ---------- */
+const dayKey = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const msToMidnight = () => { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); return m - n; };
+const fmtLeft = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60].map(v => String(v).padStart(2, '0')).join(':'); };
+/* POUR AJOUTER UNE QUÊTE DU JOUR : une ligne ici (le « type » choisit le détecteur caméra) */
+const DAILY = [
+  {id: 'pompes', type: 'pushup', title: 'Fais 10 pompes', sub: 'Validées par la caméra de ton téléphone', amount: 15, goal: 10, ic: 'dumb'}
+];
+function dailyHtml(cl) {
+  const day = dayKey();
+  const rows = DAILY.map(d => {
+    const done = cl.ids.has(`${user.uid}_daily_${day}_${d.id}`);
+    const act = done ? '<span class="tag">✓ Terminée</span>' : `<button data-daily="${d.id}">Commencer</button>`;
+    return `<div class="card wc-q ${done ? 'dn' : ''}"><span class="wc-net" style="width:44px;height:44px;background:var(--acc);color:var(--acc-ink)">${icon(d.ic)}</span><span class="wc-qt"><b>${esc(d.title)}</b><br><span class="mute">${esc(done ? 'Quête accomplie · reviens demain' : d.sub)}</span></span><em>+${d.amount}${coin(18)}</em>${act}</div>`;
+  }).join('');
+  return `<div class="wc-dh"><h3 class="wc-gh">Quêtes du jour</h3><span class="wc-cd">Nouvelles quêtes dans <b id="wcdq">${fmtLeft(msToMidnight())}</b></span></div>${rows}`;
+}
+let dTimer = 0;
+function wireDaily() {
+  clearInterval(dTimer);
+  if (!app.querySelector('#wcdq')) return;
+  const day = dayKey();
+  dTimer = setInterval(() => {
+    const e = document.getElementById('wcdq');
+    if (!e) { clearInterval(dTimer); return; }
+    if (dayKey() !== day) { clearInterval(dTimer); boutiquePage(); return; }   // minuit passé : nouvelles quêtes
+    e.textContent = fmtLeft(msToMidnight());
+  }, 1000);
+  app.querySelectorAll('[data-daily]').forEach(b => b.onclick = () => openCounter(DAILY.find(x => x.id === b.dataset.daily)));
+}
+
+/* ---------- détecteur de pompes (MediaPipe Pose, tourne 100 % sur le téléphone : aucune image n'est envoyée) ---------- */
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+let poseP = null;
+function loadPose() {
+  if (poseP) return poseP;
+  poseP = (async () => {
+    const {FilesetResolver, PoseLandmarker} = await import(MP + '/vision_bundle.mjs');
+    const fs = await FilesetResolver.forVisionTasks(MP + '/wasm');
+    const mk = delegate => PoseLandmarker.createFromOptions(fs, {baseOptions: {modelAssetPath: MP_MODEL, delegate}, runningMode: 'VIDEO', numPoses: 1});
+    try { return await mk('GPU'); } catch (e) { return await mk('CPU'); }
+  })().catch(e => { poseP = null; throw e; });
+  return poseP;
+}
+const SIDES = [{s: 11, e: 13, w: 15, h: 23, a: 27}, {s: 12, e: 14, w: 16, h: 24, a: 28}];
+const angleDeg = (a, b, c) => {
+  const v1 = [a.x - b.x, a.y - b.y], v2 = [c.x - b.x, c.y - b.y], n = Math.hypot(...v1) * Math.hypot(...v2);
+  return n ? Math.acos(Math.max(-1, Math.min(1, (v1[0] * v2[0] + v1[1] * v2[1]) / n))) * 180 / Math.PI : 180;
+};
+/* Une pompe = corps en planche (vu de profil) + coude qui descend sous ~100° puis remonte au-dessus de ~150°, dos droit. */
+function pushupCounter() {
+  let state = 'init', ang = null, tDown = 0, bad = false, count = 0;
+  return {
+    get count() { return count; },
+    feed(lm, aspect, now) {
+      const pt = i => ({x: lm[i].x * aspect, y: lm[i].y, v: lm[i].visibility ?? 0});
+      const side = SIDES.map(k => ({k, v: (pt(k.s).v + pt(k.e).v + pt(k.w).v + pt(k.h).v) / 4})).sort((a, b) => b.v - a.v)[0].k;
+      const S = pt(side.s), E = pt(side.e), W = pt(side.w), H = pt(side.h), A = pt(side.a);
+      const out = {side, count: false, ok: false, msg: ''};
+      if (S.v < .5 || E.v < .5 || W.v < .5) { out.msg = 'Je ne te vois pas bien : montre-toi en entier, de profil.'; return out; }
+      const far = A.v > .4 ? A : H.v > .5 ? H : null;
+      if (!far) { out.msg = 'Recule un peu pour qu’on voie tout ton corps.'; return out; }
+      const dx = Math.abs(S.x - far.x), dy = Math.abs(S.y - far.y);
+      if (dx < .2 || dy / dx > .6) { out.msg = 'Mets-toi en position de pompe, de profil par rapport à la caméra.'; state = state === 'down' ? 'init' : state; return out; }
+      out.ok = true;
+      const raw = angleDeg(S, E, W); ang = ang == null ? raw : ang * .5 + raw * .5;
+      out.angle = ang;
+      const straight = A.v > .4 && H.v > .5 ? angleDeg(S, H, A) : 180;
+      if (state === 'init') { out.msg = 'Tends les bras (position haute) pour commencer.'; if (ang >= 150) state = 'up'; }
+      else if (state === 'up') { out.msg = 'Descends !'; if (ang <= 100) { state = 'down'; tDown = now; bad = false; } }
+      else {
+        out.msg = 'Remonte !';
+        if (straight < 140) bad = true;
+        if (ang >= 150) {
+          state = 'up';
+          if (!bad && now - tDown >= 250) { count++; out.count = true; }
+          else if (bad) out.msg = 'Pompe non comptée : garde le dos droit.';
+        }
+      }
+      return out;
+    }
+  };
+}
+async function openCounter(d) {
+  const el = document.createElement('div'); el.className = 'modal';
+  el.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(d.title)}">
+    <h2 style="margin-top:0">${esc(d.title)}</h2>
+    <p class="mute" style="margin:0 0 4px;font-size:14px">Pose ton téléphone au sol, appuyé contre un mur, à 1,5–2 m, et mets-toi de profil : on doit voir tout ton corps. La vidéo reste sur ton téléphone.</p>
+    <div class="wc-cam" id="wcam"><video id="wcv" playsinline muted></video><canvas id="wcc"></canvas><div class="wc-cnt"><b id="wcpc">0</b><span>/ ${d.goal}</span></div></div>
+    <p class="wc-cs" id="wcs">Démarrage de la caméra…</p>
+    <p class="row" style="margin:12px 0 0"><button class="alt" id="wcflip" type="button">Changer de caméra</button><button class="alt" id="wcq" type="button">Fermer</button></p></div>`;
+  document.body.appendChild(el);
+  const $q = s => el.querySelector(s), vid = $q('#wcv'), cv = $q('#wcc'), ctx = cv.getContext('2d'), say = t => { $q('#wcs').textContent = t; };
+  let alive = true, raf = 0, stream = null, wake = null, facing = 'user', lastT = -1, pose = null, ctr = pushupCounter();
+  const stop = () => { alive = false; cancelAnimationFrame(raf); if (stream) stream.getTracks().forEach(t => t.stop()); try { wake && wake.release(); } catch (e) {} };
+  const close = () => { stop(); document.removeEventListener('keydown', onKey); el.remove(); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  $q('#wcq').onclick = close;
+  el.onclick = e => { if (e.target === el) close(); };
+
+  async function startCam() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nocam');
+    stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: facing, width: {ideal: 640}, height: {ideal: 480}}, audio: false});
+    vid.srcObject = stream; await vid.play();
+    $q('#wcam').classList.toggle('mir', facing === 'user');
+    $q('#wcam').style.aspectRatio = (vid.videoWidth || 3) + ' / ' + (vid.videoHeight || 4);
+    cv.width = vid.videoWidth; cv.height = vid.videoHeight;
+  }
+  $q('#wcflip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; try { await startCam(); } catch (e) { say('Impossible de changer de caméra.'); } };
+
+  const draw = r => {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (!r.side || !r.lm) return;
+    const k = r.side, P = i => [r.lm[i].x * cv.width, r.lm[i].y * cv.height];
+    ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.strokeStyle = r.ok ? '#43d3a0' : '#ff8a3d'; ctx.fillStyle = '#fff';
+    ctx.beginPath(); [k.w, k.e, k.s, k.h, k.a].forEach((i, n) => { const [x, y] = P(i); n ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    [k.w, k.e, k.s, k.h, k.a].forEach(i => { const [x, y] = P(i); ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); });
+  };
+  const loop = () => {
+    if (!alive) return;
+    raf = requestAnimationFrame(loop);
+    if (vid.readyState < 2 || vid.currentTime === lastT) return;
+    lastT = vid.currentTime;
+    let res; try { res = pose.detectForVideo(vid, performance.now()); } catch (e) { return; }
+    const lm = res.landmarks && res.landmarks[0];
+    if (!lm) { draw({}); say('Je ne te vois pas : place-toi devant la caméra.'); return; }
+    const r = ctr.feed(lm, vid.videoWidth / vid.videoHeight, performance.now()); r.lm = lm; draw(r);
+    $q('#wcpc').textContent = ctr.count;
+    if (r.count) { try { navigator.vibrate && navigator.vibrate(40); } catch (e) {} }
+    say(r.msg);
+    if (ctr.count >= d.goal) finish();
+  };
+  async function finish() {
+    stop(); say('Bravo ! Validation en cours…');
+    try {
+      const g = await claim('daily', `${dayKey()}_${d.id}`, d.amount);
+      close(); if (g) wcToast(`+${g} WeakCoins · ${d.title}`); boutiquePage();
+    } catch (e) {
+      console.info('WeakCoin : quête du jour non validée', e && e.code);
+      say('Validation impossible, vérifie ta connexion puis réessaie.');
+      const b = document.createElement('button'); b.textContent = 'Réessayer'; b.onclick = () => { b.remove(); finish(); }; $q('#wcs').after(b);
+    }
+  }
+  try {
+    try { wake = navigator.wakeLock ? await navigator.wakeLock.request('screen') : null; } catch (e) {}
+    await startCam();
+    say('Chargement du détecteur (quelques secondes la première fois)…');
+    pose = await loadPose();
+    if (!alive) return;
+    say('Tends les bras (position haute) pour commencer.');
+    loop();
+  } catch (e) {
+    console.info('WeakCoin : caméra/détecteur', e && (e.name || e.message));
+    say(e && e.name === 'NotAllowedError' ? 'Accès à la caméra refusé : autorise-la dans les réglages du navigateur, puis réessaie.'
+      : e && e.message === 'nocam' ? 'La caméra n’est pas disponible ici (il faut une connexion sécurisée https).'
+      : 'Le détecteur n’a pas pu se charger. Vérifie ta connexion puis réessaie.');
+  }
 }
 
 /* ---------- page Boutique ---------- */
@@ -346,11 +517,13 @@ async function boutiquePage() {
     <div class="card"><ul class="wc-how">
       <li>${icon('dumb')}<span><b>Terminer une séance</b><br><span class="mute">Coche tous les exercices (une fois par séance)</span></span><em>+${REWARD.seance}${coin(18)}</em></li>
       <li>${icon('user')}<span><b>Terminer des quêtes</b><br><span class="mute">Profil, séances, pesées, fidélité, réseaux : une fois chacune</span></span><em>10 à 60${coin(18)}</em></li>
+      <li>${icon('flame')}<span><b>Quêtes du jour</b><br><span class="mute">De nouvelles quêtes chaque jour, remises à zéro à minuit</span></span><em>+15${coin(18)}</em></li>
       <li>${icon('scale')}<span><b>Enregistrer ta pesée du jour</b><br><span class="mute">Une fois par jour</span></span><em>+${REWARD.poids}${coin(18)}</em></li>
     </ul></div>`;
   app.querySelectorAll('.wc-how .ic').forEach(i => { i.style.cssText = 'width:26px;height:26px;color:var(--acc);flex:none'; });
 
   wireQuests(claimed);
+  wireDaily();
   app.querySelectorAll('[data-b]').forEach(b => b.onclick = () => {
     const it = CATALOG.find(x => x.id === b.dataset.b), price = prices[it.id];
     const m = wcSheet(`<h2 style="margin-top:0">Confirmer l’achat</h2>
