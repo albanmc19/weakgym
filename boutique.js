@@ -313,38 +313,58 @@ function wireQuests(cl) {
   if (app.querySelector('[data-ok]')) { tick(); qTimer = setInterval(tick, 1000); }
 }
 
-/* ---------- quêtes du jour : se réinitialisent à minuit (heure locale du téléphone) ---------- */
+/* ---------- quêtes du jour : 3 quêtes tirées au sort chaque jour, remises à zéro à minuit (heure locale) ---------- */
 const dayKey = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const msToMidnight = () => { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); return m - n; };
 const fmtLeft = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60].map(v => String(v).padStart(2, '0')).join(':'); };
-/* POUR AJOUTER UNE QUÊTE DU JOUR : une ligne ici (le « type » choisit le détecteur caméra) */
-const DAILY = [
-  {id: 'pompes', type: 'pushup', title: 'Fais 10 pompes', sub: 'Validées par la caméra de ton téléphone', amount: 15, goal: 10, ic: 'dumb'}
+/* POUR AJOUTER UN EXERCICE : une ligne ici + un détecteur dans COUNTERS (clé = type). 3 exercices sont tirés chaque jour. */
+const DAILY_AMOUNT = 15;   // doit rester identique aux règles Firestore
+const POOL = [
+  {id: 'pompes', type: 'pushup', title: 'Fais 10 pompes', goal: 10, unit: '', ic: 'dumb', sub: 'Pompes classiques, de face ou de profil',
+   how: 'Pose le téléphone au sol, à 1–2 m. Mets-toi de profil (corps entier visible) ou de face (tête, épaules et mains visibles). Commence bras tendus.'},
+  {id: 'squats', type: 'squat', title: 'Fais 10 squats', goal: 10, unit: '', ic: 'dumb', sub: 'Descends comme pour t’asseoir sur une chaise',
+   how: 'Pose le téléphone à 2–3 m, debout, de la tête aux pieds dans l’image (de face ou de profil). Descends les fesses vers le sol puis remonte.'},
+  {id: 'jacks', type: 'jack', title: 'Fais 10 jumping jacks', goal: 10, unit: '', ic: 'flame', sub: 'Bras en l’air, jambes écartées',
+   how: 'Debout, de face, à 2–3 m, tout le corps visible. Écarte les jambes en levant les bras au-dessus de la tête, puis referme.'},
+  {id: 'genoux', type: 'knees', title: 'Monte 20 fois les genoux', goal: 20, unit: '', ic: 'flame', sub: 'Genoux hauts, en alternant',
+   how: 'Debout, de face, à 2–3 m, tout le corps visible. Monte chaque genou à hauteur de hanche, en alternant, sur place.'},
+  {id: 'crunchs', type: 'crunch', title: 'Fais 10 crunchs', goal: 10, unit: '', ic: 'dumb', sub: 'Allongé sur le dos, genoux pliés',
+   how: 'Allonge-toi sur le dos, genoux pliés, de profil par rapport au téléphone posé au sol à 1,5–2 m. Décolle les épaules du sol à chaque fois.'},
+  {id: 'gainage', type: 'plank', title: 'Tiens 20 secondes de gainage', goal: 20, unit: ' s', ic: 'flame', sub: 'Planche, dos bien droit',
+   how: 'Mets-toi en planche (sur les coudes ou les mains), de profil, corps entier visible, à 1,5–2 m. Le chrono avance tant que ton dos est droit.'}
 ];
+/* tirage identique pour tout le monde, différent chaque jour */
+function dayQuests(day) {
+  let h = 2166136261; for (const c of day) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const rnd = () => { h = (Math.imul(h, 1664525) + 1013904223) >>> 0; return h / 4294967296; };
+  const a = POOL.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, 3);
+}
 function dailyHtml(cl) {
-  const day = dayKey();
-  const rows = DAILY.map(d => {
+  const day = dayKey(), qs = dayQuests(day);
+  const nb = qs.filter(d => cl.ids.has(`${user.uid}_daily_${day}_${d.id}`)).length;
+  const rows = qs.map(d => {
     const done = cl.ids.has(`${user.uid}_daily_${day}_${d.id}`);
     const act = done ? '<span class="tag">✓ Terminée</span>' : `<button data-daily="${d.id}">Commencer</button>`;
-    return `<div class="card wc-q ${done ? 'dn' : ''}"><span class="wc-net" style="width:44px;height:44px;background:var(--acc);color:var(--acc-ink)">${icon(d.ic)}</span><span class="wc-qt"><b>${esc(d.title)}</b><br><span class="mute">${esc(done ? 'Quête accomplie · reviens demain' : d.sub)}</span></span><em>+${d.amount}${coin(18)}</em>${act}</div>`;
+    return `<div class="card wc-q ${done ? 'dn' : ''}"><span class="wc-net" style="width:44px;height:44px;background:var(--acc);color:var(--acc-ink)">${icon(d.ic)}</span><span class="wc-qt"><b>${esc(d.title)}</b><br><span class="mute">${esc(done ? 'Quête accomplie · reviens demain' : d.sub)}</span></span><em>+${DAILY_AMOUNT}${coin(18)}</em>${act}</div>`;
   }).join('');
-  return `<div class="wc-dh"><h3 class="wc-gh">Quêtes du jour</h3><span class="wc-cd">Nouvelles quêtes dans <b id="wcdq">${fmtLeft(msToMidnight())}</b></span></div>${rows}`;
+  return `<div class="wc-dh"><h3 class="wc-gh">Quêtes du jour · ${nb}/${qs.length}</h3><span class="wc-cd">Nouvelles quêtes dans <b id="wcdq">${fmtLeft(msToMidnight())}</b></span></div>${rows}`;
 }
 let dTimer = 0;
 function wireDaily() {
   clearInterval(dTimer);
   if (!app.querySelector('#wcdq')) return;
-  const day = dayKey();
+  const day = dayKey(), qs = dayQuests(day);
   dTimer = setInterval(() => {
     const e = document.getElementById('wcdq');
     if (!e) { clearInterval(dTimer); return; }
     if (dayKey() !== day) { clearInterval(dTimer); boutiquePage(); return; }   // minuit passé : nouvelles quêtes
     e.textContent = fmtLeft(msToMidnight());
   }, 1000);
-  app.querySelectorAll('[data-daily]').forEach(b => b.onclick = () => openCounter(DAILY.find(x => x.id === b.dataset.daily)));
+  app.querySelectorAll('[data-daily]').forEach(b => b.onclick = () => openCounter(qs.find(x => x.id === b.dataset.daily)));
 }
 
-/* ---------- détecteur de pompes (MediaPipe Pose, tourne 100 % sur le téléphone : aucune image n'est envoyée) ---------- */
+/* ---------- détecteurs (MediaPipe Pose, tourne 100 % sur le téléphone : aucune image n'est envoyée) ---------- */
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 let poseP = null;
@@ -358,56 +378,151 @@ function loadPose() {
   })().catch(e => { poseP = null; throw e; });
   return poseP;
 }
-const SIDES = [{s: 11, e: 13, w: 15, h: 23, a: 27}, {s: 12, e: 14, w: 16, h: 24, a: 28}];
+const SIDES = [{s: 11, e: 13, w: 15, h: 23, k: 25, a: 27}, {s: 12, e: 14, w: 16, h: 24, k: 26, a: 28}];
+const mkPt = (lm, asp) => i => ({x: lm[i].x * asp, y: lm[i].y, v: lm[i].visibility ?? 0});
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const angleDeg = (a, b, c) => {
   const v1 = [a.x - b.x, a.y - b.y], v2 = [c.x - b.x, c.y - b.y], n = Math.hypot(...v1) * Math.hypot(...v2);
   return n ? Math.acos(Math.max(-1, Math.min(1, (v1[0] * v2[0] + v1[1] * v2[1]) / n))) * 180 / Math.PI : 180;
 };
-/* Une pompe = corps en planche (vu de profil) + coude qui descend sous ~100° puis remonte au-dessus de ~150°, dos droit. */
-function pushupCounter() {
-  let state = 'init', ang = null, tDown = 0, bad = false, count = 0;
-  return {
-    get count() { return count; },
-    feed(lm, aspect, now) {
-      const pt = i => ({x: lm[i].x * aspect, y: lm[i].y, v: lm[i].visibility ?? 0});
-      const side = SIDES.map(k => ({k, v: (pt(k.s).v + pt(k.e).v + pt(k.w).v + pt(k.h).v) / 4})).sort((a, b) => b.v - a.v)[0].k;
-      const S = pt(side.s), E = pt(side.e), W = pt(side.w), H = pt(side.h), A = pt(side.a);
-      const out = {side, count: false, ok: false, msg: ''};
-      if (S.v < .5 || E.v < .5 || W.v < .5) { out.msg = 'Je ne te vois pas bien : montre-toi en entier, de profil.'; return out; }
-      const far = A.v > .4 ? A : H.v > .5 ? H : null;
-      if (!far) { out.msg = 'Recule un peu pour qu’on voie tout ton corps.'; return out; }
-      const dx = Math.abs(S.x - far.x), dy = Math.abs(S.y - far.y);
-      if (dx < .2 || dy / dx > .6) { out.msg = 'Mets-toi en position de pompe, de profil par rapport à la caméra.'; state = state === 'down' ? 'init' : state; return out; }
-      out.ok = true;
-      const raw = angleDeg(S, E, W); ang = ang == null ? raw : ang * .5 + raw * .5;
-      out.angle = ang;
-      const straight = A.v > .4 && H.v > .5 ? angleDeg(S, H, A) : 180;
-      if (state === 'init') { out.msg = 'Tends les bras (position haute) pour commencer.'; if (ang >= 150) state = 'up'; }
-      else if (state === 'up') { out.msg = 'Descends !'; if (ang <= 100) { state = 'down'; tDown = now; bad = false; } }
-      else {
-        out.msg = 'Remonte !';
-        if (straight < 140) bad = true;
-        if (ang >= 150) {
-          state = 'up';
-          if (!bad && now - tDown >= 250) { count++; out.count = true; }
-          else if (bad) out.msg = 'Pompe non comptée : garde le dos droit.';
-        }
+/* mémoire glissante : sert de référence « position haute / debout » qui s'adapte toute seule à la distance du téléphone */
+const win = ms => { const a = []; return {
+  push(t, v) { a.push({t, v}); while (a.length && t - a[0].t > ms) a.shift(); },
+  max() { return Math.max(...a.map(x => x.v)); }, min() { return Math.min(...a.map(x => x.v)); }, clear() { a.length = 0; } }; };
+const bestSide = P => SIDES.map(k => ({k, S: P(k.s), E: P(k.e), W: P(k.w), H: P(k.h), K: P(k.k), A: P(k.a)}))
+  .map(o => ({...o, v: (o.S.v + o.E.v + o.W.v + o.H.v) / 4})).sort((x, y) => y.v - x.v)[0];
+/* corps vu de profil, à l'horizontale (pompe, planche) ? */
+const flatSide = o => { const far = o.A.v > .4 ? o.A : o.H.v > .5 ? o.H : null; if (!far || o.S.v < .5) return false;
+  const dx = Math.abs(o.S.x - far.x), dy = Math.abs(o.S.y - far.y); return dx >= .2 && dy / dx <= .6; };
+
+const COUNTERS = {
+  /* POMPES — de profil : angle du coude (<100° puis >150°, dos droit). De face : descente des épaules (≥ 0,35 largeur d'épaules) puis remontée. */
+  pushup() {
+    let count = 0, mode = '', st = 'init', ang = null, tD = 0, bad = false; const w = win(4000);
+    const setMode = m => { if (m !== mode) { mode = m; st = 'init'; ang = null; w.clear(); } };
+    return {
+      get count() { return count; },
+      feed(lm, asp, now) {
+        const P = mkPt(lm, asp), o = bestSide(P), out = {count: false, ok: false, msg: '', draw: []};
+        const L = P(11), R = P(12), N = P(0), LW = P(15), RW = P(16), sw = dist(L, R), shY = (L.y + R.y) / 2;
+        const sideOk = o.E.v >= .5 && o.W.v >= .5 && flatSide(o);
+        const frontOk = [L, R, N, LW, RW].every(p => p.v >= .5) && sw >= .12 && Math.abs(N.y - shY) < .45 * sw;
+        if (sideOk) {   // ---- vue de profil
+          setMode('side'); out.ok = true; out.draw = [[o.k.w, o.k.e, o.k.s, o.k.h, o.k.a]];
+          const raw = angleDeg(o.S, o.E, o.W); ang = ang == null ? raw : ang * .5 + raw * .5;
+          const straight = o.A.v > .4 && o.H.v > .5 ? angleDeg(o.S, o.H, o.A) : 180;
+          if (st === 'init') { out.msg = 'Tends les bras (position haute) pour commencer.'; if (ang >= 150) st = 'up'; }
+          else if (st === 'up') { out.msg = 'Descends !'; if (ang <= 100) { st = 'down'; tD = now; bad = false; } }
+          else { out.msg = 'Remonte !'; if (straight < 140) bad = true;
+            if (ang >= 150) { st = 'up'; if (!bad && now - tD >= 250) { count++; out.count = true; } else if (bad) out.msg = 'Pompe non comptée : garde le dos droit.'; } }
+        } else if (frontOk) {   // ---- vue de face
+          setMode('front'); out.ok = true; out.draw = [[15, 13, 11, 12, 14, 16], [0]];
+          w.push(now, shY); const drop = (shY - w.min()) / sw;
+          if (st === 'init') { st = 'up'; }
+          if (st === 'up') { out.msg = 'Descends !'; if (drop >= .35) { st = 'down'; tD = now; } }
+          else { out.msg = 'Remonte !'; if (drop <= .15) { st = 'up'; if (now - tD >= 250) { count++; out.count = true; } } }
+        } else { out.msg = 'Je ne te vois pas bien : mets-toi en position de pompe, de profil ou de face, bien visible.'; if (st === 'down') st = 'init'; }
+        return out;
       }
-      return out;
-    }
-  };
-}
+    };
+  },
+  /* SQUATS — la hanche descend (hauteur hanche→chevilles / sa valeur debout ≤ 0,78), puis remonte (≥ 0,92). Marche de face comme de profil. */
+  squat() {
+    let count = 0, st = 'init', tD = 0; const w = win(5000);
+    return {
+      get count() { return count; },
+      feed(lm, asp, now) {
+        const P = mkPt(lm, asp), out = {count: false, ok: false, msg: '', draw: [[11, 12], [23, 24], [11, 23, 25, 27], [12, 24, 26, 28]]};
+        const HL = P(23), HR = P(24), AL = P(27), AR = P(28);
+        if (HL.v < .5 || HR.v < .5 || AL.v < .4 || AR.v < .4) { out.msg = 'Recule : on doit te voir de la tête aux pieds.'; return out; }
+        out.ok = true; const hgt = (AL.y + AR.y) / 2 - (HL.y + HR.y) / 2; w.push(now, hgt); const r = hgt / w.max();
+        if (st === 'init') { out.msg = 'Tiens-toi bien droit pour commencer.'; if (r >= .93) st = 'up'; }
+        else if (st === 'up') { out.msg = 'Descends !'; if (r <= .78) { st = 'down'; tD = now; } }
+        else { out.msg = 'Remonte !'; if (r >= .92) { st = 'up'; if (now - tD >= 300) { count++; out.count = true; } } }
+        return out;
+      }
+    };
+  },
+  /* JUMPING JACKS — ouvert : poignets au-dessus du nez et chevilles écartées ; fermé : poignets sous les épaules, chevilles serrées. */
+  jack() {
+    let count = 0, st = 'init';
+    return {
+      get count() { return count; },
+      feed(lm, asp) {
+        const P = mkPt(lm, asp), out = {count: false, ok: false, msg: '', draw: [[15, 13, 11, 12, 14, 16], [11, 23, 25, 27], [12, 24, 26, 28]]};
+        const L = P(11), R = P(12), N = P(0), LW = P(15), RW = P(16), AL = P(27), AR = P(28);
+        if ([L, R, N].some(p => p.v < .5) || LW.v < .4 || RW.v < .4 || AL.v < .4 || AR.v < .4) { out.msg = 'Mets-toi de face, à 2–3 m : tout le corps doit être visible.'; return out; }
+        out.ok = true; const sw = dist(L, R), shY = (L.y + R.y) / 2, sep = Math.abs(AL.x - AR.x);
+        const open = LW.y < N.y && RW.y < N.y && sep >= 1.3 * sw, closed = LW.y > shY && RW.y > shY && sep <= 1.0 * sw;
+        if (st === 'init') { out.msg = 'Pieds joints, bras le long du corps pour commencer.'; if (closed) st = 'closed'; }
+        else if (st === 'closed') { out.msg = 'Bras en l’air et jambes écartées !'; if (open) st = 'open'; }
+        else { out.msg = 'Referme !'; if (closed) { st = 'closed'; count++; out.count = true; } }
+        return out;
+      }
+    };
+  },
+  /* GENOUX HAUTS — un genou compte quand il monte à hauteur de hanche (écart genou-hanche ≤ 0,3 longueur du buste), puis redescend. */
+  knees() {
+    let count = 0; const armed = [true, true];
+    return {
+      get count() { return count; },
+      feed(lm, asp) {
+        const P = mkPt(lm, asp), out = {count: false, ok: false, msg: '', draw: [[11, 12], [23, 24], [11, 23, 25, 27], [12, 24, 26, 28]]};
+        const L = P(11), R = P(12), HL = P(23), HR = P(24), K = [P(25), P(26)];
+        if ([L, R, HL, HR].some(p => p.v < .5) || K.some(k => k.v < .4)) { out.msg = 'Mets-toi de face, à 2–3 m : tout le corps visible.'; return out; }
+        out.ok = true; const sc = dist({x: (L.x + R.x) / 2, y: (L.y + R.y) / 2}, {x: (HL.x + HR.x) / 2, y: (HL.y + HR.y) / 2}); out.msg = 'Monte les genoux, en alternant !';
+        [HL, HR].forEach((h, i) => { const rel = (K[i].y - h.y) / sc;
+          if (armed[i] && rel <= .3) { armed[i] = false; count++; out.count = true; } else if (!armed[i] && rel >= .6) armed[i] = true; });
+        return out;
+      }
+    };
+  },
+  /* CRUNCHS — de profil, allongé : le buste (épaule→hanche) passe de ≤ 15° à ≥ 25° au-dessus du sol, puis redescend. */
+  crunch() {
+    let count = 0, st = 'init';
+    return {
+      get count() { return count; },
+      feed(lm, asp) {
+        const P = mkPt(lm, asp), o = bestSide(P), out = {count: false, ok: false, msg: '', draw: [[o.k.s, o.k.h, o.k.k]]};
+        if (o.S.v < .5 || o.H.v < .5) { out.msg = 'Allonge-toi de profil, corps entier visible.'; return out; }
+        const dx = Math.abs(o.S.x - o.H.x), dy = Math.abs(o.S.y - o.H.y), a = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (dx < .08) { out.msg = 'Mets-toi bien de profil par rapport à la caméra.'; return out; }
+        out.ok = true;
+        if (st === 'init') { out.msg = 'Allonge-toi sur le dos, genoux pliés.'; if (a <= 15) st = 'down'; }
+        else if (st === 'down') { out.msg = 'Décolle les épaules !'; if (a >= 25) st = 'up'; }
+        else { out.msg = 'Redescends.'; if (a <= 15) { st = 'down'; count++; out.count = true; } }
+        return out;
+      }
+    };
+  },
+  /* GAINAGE — le chrono avance seulement quand le corps est horizontal et le dos droit (épaule-hanche-cheville ≥ 150°). count = secondes tenues. */
+  plank() {
+    let secs = 0, last = 0;
+    return {
+      get count() { return Math.floor(secs); },
+      feed(lm, asp, now) {
+        const P = mkPt(lm, asp), o = bestSide(P), out = {count: false, ok: false, msg: '', draw: [[o.k.w, o.k.e, o.k.s, o.k.h, o.k.a]]};
+        const dt = last ? Math.min(now - last, 200) / 1000 : 0; last = now;
+        if (!flatSide(o)) { out.msg = 'Mets-toi en planche, de profil, corps entier visible.'; return out; }
+        const straight = o.A.v > .4 && o.H.v > .5 ? angleDeg(o.S, o.H, o.A) : 180;
+        if (straight < 150) { out.msg = 'Garde le dos droit (ni fesses en l’air, ni ventre qui tombe).'; return out; }
+        out.ok = true; secs += dt; out.msg = 'Tiens bon !'; return out;
+      }
+    };
+  }
+};
+
 async function openCounter(d) {
   const el = document.createElement('div'); el.className = 'modal';
   el.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(d.title)}">
     <h2 style="margin-top:0">${esc(d.title)}</h2>
-    <p class="mute" style="margin:0 0 4px;font-size:14px">Pose ton téléphone au sol, appuyé contre un mur, à 1,5–2 m, et mets-toi de profil : on doit voir tout ton corps. La vidéo reste sur ton téléphone.</p>
-    <div class="wc-cam" id="wcam"><video id="wcv" playsinline muted></video><canvas id="wcc"></canvas><div class="wc-cnt"><b id="wcpc">0</b><span>/ ${d.goal}</span></div></div>
+    <p class="mute" style="margin:0 0 4px;font-size:14px">${esc(d.how)} La vidéo reste sur ton téléphone.</p>
+    <div class="wc-cam" id="wcam"><video id="wcv" playsinline muted></video><canvas id="wcc"></canvas><div class="wc-cnt"><b id="wcpc">0</b><span>/ ${d.goal}${esc(d.unit || '')}</span></div></div>
     <p class="wc-cs" id="wcs">Démarrage de la caméra…</p>
     <p class="row" style="margin:12px 0 0"><button class="alt" id="wcflip" type="button">Changer de caméra</button><button class="alt" id="wcq" type="button">Fermer</button></p></div>`;
   document.body.appendChild(el);
   const $q = s => el.querySelector(s), vid = $q('#wcv'), cv = $q('#wcc'), ctx = cv.getContext('2d'), say = t => { $q('#wcs').textContent = t; };
-  let alive = true, raf = 0, stream = null, wake = null, facing = 'user', lastT = -1, pose = null, ctr = pushupCounter();
+  let alive = true, raf = 0, stream = null, wake = null, facing = 'user', lastT = -1, pose = null, ctr = COUNTERS[d.type]();
   const stop = () => { alive = false; cancelAnimationFrame(raf); if (stream) stream.getTracks().forEach(t => t.stop()); try { wake && wake.release(); } catch (e) {} };
   const close = () => { stop(); document.removeEventListener('keydown', onKey); el.remove(); };
   const onKey = e => { if (e.key === 'Escape') close(); };
@@ -428,11 +543,13 @@ async function openCounter(d) {
 
   const draw = r => {
     ctx.clearRect(0, 0, cv.width, cv.height);
-    if (!r.side || !r.lm) return;
-    const k = r.side, P = i => [r.lm[i].x * cv.width, r.lm[i].y * cv.height];
-    ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.strokeStyle = r.ok ? '#43d3a0' : '#ff8a3d'; ctx.fillStyle = '#fff';
-    ctx.beginPath(); [k.w, k.e, k.s, k.h, k.a].forEach((i, n) => { const [x, y] = P(i); n ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
-    [k.w, k.e, k.s, k.h, k.a].forEach(i => { const [x, y] = P(i); ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); });
+    if (!r.lm || !r.draw) return;
+    ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = r.ok ? '#43d3a0' : '#ff8a3d'; ctx.fillStyle = '#fff';
+    const P = i => [r.lm[i].x * cv.width, r.lm[i].y * cv.height];
+    r.draw.forEach(line => {
+      ctx.beginPath(); line.forEach((i, n) => { const [x, y] = P(i); n ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+      line.forEach(i => { const [x, y] = P(i); ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); });
+    });
   };
   const loop = () => {
     if (!alive) return;
@@ -451,7 +568,7 @@ async function openCounter(d) {
   async function finish() {
     stop(); say('Bravo ! Validation en cours…');
     try {
-      const g = await claim('daily', `${dayKey()}_${d.id}`, d.amount);
+      const g = await claim('daily', `${dayKey()}_${d.id}`, DAILY_AMOUNT);
       close(); if (g) wcToast(`+${g} WeakCoins · ${d.title}`); boutiquePage();
     } catch (e) {
       console.info('WeakCoin : quête du jour non validée', e && e.code);
@@ -465,7 +582,7 @@ async function openCounter(d) {
     say('Chargement du détecteur (quelques secondes la première fois)…');
     pose = await loadPose();
     if (!alive) return;
-    say('Tends les bras (position haute) pour commencer.');
+    say('C’est parti !');
     loop();
   } catch (e) {
     console.info('WeakCoin : caméra/détecteur', e && (e.name || e.message));
@@ -517,7 +634,7 @@ async function boutiquePage() {
     <div class="card"><ul class="wc-how">
       <li>${icon('dumb')}<span><b>Terminer une séance</b><br><span class="mute">Coche tous les exercices (une fois par séance)</span></span><em>+${REWARD.seance}${coin(18)}</em></li>
       <li>${icon('user')}<span><b>Terminer des quêtes</b><br><span class="mute">Profil, séances, pesées, fidélité, réseaux : une fois chacune</span></span><em>10 à 60${coin(18)}</em></li>
-      <li>${icon('flame')}<span><b>Quêtes du jour</b><br><span class="mute">De nouvelles quêtes chaque jour, remises à zéro à minuit</span></span><em>+15${coin(18)}</em></li>
+      <li>${icon('flame')}<span><b>Quêtes du jour</b><br><span class="mute">3 nouvelles quêtes sport chaque jour, remises à zéro à minuit</span></span><em>+15${coin(18)}</em></li>
       <li>${icon('scale')}<span><b>Enregistrer ta pesée du jour</b><br><span class="mute">Une fois par jour</span></span><em>+${REWARD.poids}${coin(18)}</em></li>
     </ul></div>`;
   app.querySelectorAll('.wc-how .ic').forEach(i => { i.style.cssText = 'width:26px;height:26px;color:var(--acc);flex:none'; });
