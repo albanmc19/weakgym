@@ -91,3 +91,8 @@
 h1+.scat{margin:0 0 10px}
 .hs .scat{align-self:flex-start}
 #obl button.on{outline:2px solid var(--acc);outline-offset:-2px}
+
+/* profil privé */
+.lock-b{filter:blur(9px);opacity:.7;pointer-events:none;user-select:none}
+.priv-c svg{width:34px;height:34px;fill:none;stroke:var(--mute);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-bottom:6px}
+.priv-c b{display:block;font:800 18px var(--hf)}
