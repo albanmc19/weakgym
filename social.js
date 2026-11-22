@@ -48,6 +48,8 @@ async function checkPhoto(dataUrl) {
   })();
   return Promise.race([run, new Promise((_, ko) => setTimeout(() => ko(new Error('Délai dépassé')), 30000))]);
 }
+/* profil privé : visible par son propriétaire, l'admin, et les membres avec qui l'abonnement est mutuel */
+const isLocked = (u, mutual) => !!u && u.private === true && u.uid !== user.uid && !isAdmin && !mutual;
 const hiddenPost = p => p.review === true || (p.rep | 0) >= MOD.reports;
 const SV = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
@@ -308,9 +310,10 @@ async function socialPage() {
     <button id="np" class="soc-new">${SV.plus} Publier une photo</button>
     <div class="seg" id="st"><a href="#" data-t="abo">Abonnements</a><a href="#" data-t="all">Tout le monde</a></div>
     <div id="feed"><p class="mute">Chargement…</p></div>`;
-  const [ps, fol, st] = await Promise.all([POSTS().orderBy('at', 'desc').limit(60).get(), db.collection('follows').where('from', '==', user.uid).get(), newState()]);
-  const fset = new Set(fol.docs.map(d => d.data().to)); fset.add(user.uid);
-  let posts = fromDocs(ps).filter(p => !(st.users[p.uid] && st.users[p.uid].blocked));
+  const [ps, fol, fme, st] = await Promise.all([POSTS().orderBy('at', 'desc').limit(60).get(), db.collection('follows').where('from', '==', user.uid).get(), db.collection('follows').where('to', '==', user.uid).get(), newState()]);
+  const fset = new Set(fol.docs.map(d => d.data().to)), fromMe = new Set(fme.docs.map(d => d.data().from)); fset.add(user.uid);
+  const mutual = id => fset.has(id) && fromMe.has(id);
+  let posts = fromDocs(ps).filter(p => !(st.users[p.uid] && st.users[p.uid].blocked) && !isLocked(st.users[p.uid], mutual(p.uid)));
   let tab = fol.size ? 'abo' : 'all', tok = 0;
   const draw = async () => {
     const my = ++tok, box = $('#feed');
@@ -353,6 +356,21 @@ async function profilePage(uid) {
     POSTS().where('uid', '==', uid).get(), db.collection('follows').where('from', '==', user.uid).get(), newState()]);
   if (!ud.exists) { app.innerHTML = '<h1>Profil introuvable</h1><a class="btn alt" href="#/membres">Rechercher des membres</a>'; return; }
   const users = st.users, u = {uid, ...ud.data()}; if (self) myProf = ud.data();
+  const iFol = fr.docs.some(d => d.data().from === user.uid), heFol = fg.docs.some(d => d.data().to === user.uid);
+  if (isLocked(u, iFol && heFol)) {
+    app.innerHTML = `<p style="margin:0"><a class="link" href="#/social" style="padding-left:0">← Social</a></p>
+      <div class="pr">${av({uid, name: u.name}, 'xl')}<div class="pr-s lock-b">${['Publications', 'Abonnés', 'Abonnements'].map(l => `<button disabled><b>0</b><span>${l}</span></button>`).join('')}</div></div>
+      <h1 class="pr-n">${esc(u.name || 'Sans nom')}${wgBadges(u)}</h1>
+      <div class="pr-act">${fbtn(uid, iFol).replace('class="fb', 'id="mainf" style="min-height:46px;font-size:16px" class="fb')}</div>
+      <div class="card pg-e priv-c">${SV.lockC}<b>Profil privé</b><p class="mute" style="margin:4px 0 0">Tu peux t’abonner. Le profil devient visible quand vous êtes abonnés l’un à l’autre.</p></div>
+      <div class="pg lock-b" aria-hidden="true">${'<button disabled></button>'.repeat(9)}</div>`;
+    const b = $('#mainf');
+    b.onclick = async () => {
+      b.disabled = true;
+      try { await toggleFollow(uid, iFol); profilePage(uid); } catch (e) { alert('Erreur : ' + e.message); b.disabled = false; }
+    };
+    return;
+  }
   const followers = fr.docs.map(d => d.data()).sort((a, b) => b.at - a.at).map(f => users[f.from]).filter(Boolean);
   const following = fg.docs.map(d => d.data()).sort((a, b) => b.at - a.at).map(f => users[f.to]).filter(Boolean);
   const myFol = new Set(mine.docs.map(d => d.data().to));
@@ -363,7 +381,7 @@ async function profilePage(uid) {
   app.innerHTML = `${self ? '' : '<p style="margin:0"><a class="link" href="#/social" style="padding-left:0">← Social</a></p>'}
     <div class="pr">${av(u, 'xl')}<div class="pr-s">${stat('posts', posts.length, 'Publications')}${stat('followers', followers.length, 'Abonnés')}${stat('following', following.length, 'Abonnements')}</div></div>
     <h1 class="pr-n">${esc(u.name || 'Sans nom')}${wgBadges(u)}</h1>
-    <p class="pr-m"><span class="${isOnline(u.seen) || self ? 'on-t' : ''}">${lastSeen(u.seen, self)}</span>${showJoined ? ` · Membre depuis ${esc(joined)}${self && u.hideJoined ? ' (masqué)' : ''}` : ''}${!self && following.some(x => x.uid === user.uid) ? ' · <b>Te suit</b>' : ''}</p>
+    <p class="pr-m"><span class="${isOnline(u.seen) || self ? 'on-t' : ''}">${lastSeen(u.seen, self)}</span>${showJoined ? ` · Membre depuis ${esc(joined)}${self && u.hideJoined ? ' (masqué)' : ''}` : ''}${!self && following.some(x => x.uid === user.uid) ? ' · <b>Te suit</b>' : ''}${u.private ? (self ? ' · Profil privé' : ' · Profil privé (visible car tu es admin)') : ''}</p>
     ${u.bio ? `<p class="bio pr-b">${esc(u.bio)}</p>` : '<div style="height:10px"></div>'}
     <div class="pr-act">${self ? '<button id="ed" class="alt">Modifier le profil</button><button id="np">Publier</button>' : fbtn(uid, iFollow).replace('class="fb', 'id="mainf" style="min-height:46px;font-size:16px" class="fb')}${isAdmin ? '<button id="bg" class="alt">Badges</button>' : ''}</div>
     ${self ? `<div class="card" id="edbox" hidden>
@@ -372,6 +390,7 @@ async function profilePage(uid) {
       <label for="edn">Nom affiché</label><input id="edn" maxlength="30" value="${esc(u.name || '')}">
       <label for="edb">Bio</label><textarea id="edb" rows="2" maxlength="140" placeholder="Objectif, salle, programme…">${esc(u.bio || '')}</textarea>
       <label class="chk"><input id="edj" type="checkbox" ${u.hideJoined ? '' : 'checked'}> Afficher « Membre depuis »</label>
+      <label class="chk"><input id="edp" type="checkbox" ${u.private ? 'checked' : ''}> Profil privé (invisible pour les autres membres)</label>
       <p id="eder" class="err" hidden></p>
       <p class="row" style="margin:14px 0 0"><button id="eds">Enregistrer</button><button class="alt" id="edc" type="button">Annuler</button></p></div>` : ''}
     <div id="pg"></div>`;
@@ -411,10 +430,11 @@ async function profilePage(uid) {
     if (!name) { er.textContent = 'Le nom ne peut pas être vide.'; er.hidden = false; return; }
     b.disabled = true;
     try {
-      const data = {name, bio: $('#edb').value.trim().slice(0, 140), photo: photo || F.delete(), hideJoined: $('#edj').checked ? F.delete() : true};
+      const data = {name, bio: $('#edb').value.trim().slice(0, 140), photo: photo || F.delete(), hideJoined: $('#edj').checked ? F.delete() : true, private: $('#edp').checked ? true : F.delete()};
       await db.collection('users').doc(uid).update(data);
       myProf = {...myProf, name, bio: data.bio, photo}; if (!photo) delete myProf.photo;
       if ($('#edj').checked) delete myProf.hideJoined; else myProf.hideJoined = true;
+      if ($('#edp').checked) myProf.private = true; else delete myProf.private;
       ucache = null; setWho(); profilePage(uid);
     } catch (x) { er.textContent = 'Erreur : ' + x.message; er.hidden = false; b.disabled = false; }
   };
