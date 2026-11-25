@@ -472,8 +472,8 @@ function watchPosts() {
     const one = ok.length === 1 ? ok[0] : null;
     const title = one ? one.name + ' a publié une photo 📸' : 'Nouvelles photos 📸';
     const body = one ? (one.p.text ? one.p.text.slice(0, 100) : 'Viens voir sa nouvelle publication.') : ok.length + ' nouvelles publications de tes abonnements.';
-    if (!document.hidden) { socToast(one ? title : body); return; }
-    if (canPush()) socNotify(title, body, one ? 'wg-post-' + one.p.id : 'wg-posts');
+    if (!document.hidden) { if (window.wgToast) wgToast({kind: 'social', title, text: body, href: '#/social', ms: 7000}); else socToast(one ? title : body); return; }
+    if (canPush() && !(window.wgPush && wgPush.active())) socNotify(title, body, one ? 'wg-post-' + one.p.id : 'wg-posts');   // si le push serveur est actif, c'est lui qui prévient
   };
   const start = () => {
     if (started || !fol || !back) return; started = true;
