@@ -13,6 +13,7 @@
 
 /* ---------- catalogue ---------- */
 const REWARD = {seance: 20, poids: 5, quete: 25};   // doit rester identique aux règles Firestore
+window.WC_REWARD = REWARD;
 const CATALOG = [
   {id: 'badge-boutique', type: 'badge', name: 'Badge Boutique', price: 250,
    desc: 'Un badge exclusif affiché à côté de ton nom, sur ton profil et tes publications. À toi pour toujours.'},
@@ -116,8 +117,31 @@ function wcSheet(html) {
 }
 
 /* ---------- message flash « +20 WeakCoins » ---------- */
-let toastT = 0;
+let lastBal = null;   // solde juste après le dernier gain (calculé dans la transaction, sans lecture en plus)
+/* « +20 WeakCoins · Séance terminée » -> carte animée : pièce qui tourne, compteur, solde et objectif suivant */
 function wcToast(text) {
+  const m = /^\+(\d+) WeakCoins · (.+)$/.exec(text);
+  if (!window.wgToast) return wcToastOld(text);
+  if (!m) return wgToast({kind: 'info', title: text});
+  const n = +m[1], bal = lastBal; lastBal = null;
+  const extra = document.createElement('div'); extra.className = 'wgt-g';
+  let fill = null;
+  if (bal != null) {
+    const s = document.createElement('span'); s.className = 'wgt-s'; s.textContent = 'Solde : ' + fmtN(bal) + ' WeakCoins'; extra.appendChild(s);
+    const owned = (myProf && myProf.items) || [], goal = CATALOG.filter(i => !owned.includes(i.id)).sort((a, b) => a.price - b.price)[0];
+    if (goal) {
+      const bar = document.createElement('i'); fill = document.createElement('b'); bar.appendChild(fill); extra.appendChild(bar);
+      const l = document.createElement('span'); l.className = 'wgt-s';
+      l.textContent = bal >= goal.price ? 'Tu peux t’offrir : ' + goal.name + ' !' : 'Plus que ' + fmtN(goal.price - bal) + ' pour ' + goal.name;
+      extra.appendChild(l);
+      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = Math.min(100, Math.round(bal / goal.price * 100)) + '%'; }));
+    }
+  }
+  const el = wgToast({kind: 'coin', icon: coin(48), title: '+' + n + ' WeakCoins', text: m[2], extra, href: '#/boutique', ms: 6000});
+  const t = el.querySelector('.wgt-t'); if (t) wgCount(t, 0, n, 600, v => '+' + v + ' WeakCoins');
+}
+let toastT = 0;
+function wcToastOld(text) {
   let t = document.getElementById('wc-toast');
   if (!t) { t = document.createElement('div'); t.id = 'wc-toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
   t.innerHTML = coin(26) + '<span></span>'; t.lastChild.textContent = text;
@@ -141,6 +165,7 @@ async function claim(kind, ref, amount = REWARD[kind], extra = {}) {
     gained = false;
     if ((await tx.get(cref)).exists) return;
     const w = await tx.get(wref), d = w.exists ? w.data() : null;
+    lastBal = d ? (d.earned || 0) + amount - (d.spent || 0) : amount;
     tx.set(cref, {uid, kind, ref, amount, at: Date.now(), ...extra});
     if (d) tx.update(wref, {earned: (d.earned || 0) + amount, last: id, lastKind: 'claim'});
     else tx.set(wref, {uid, earned: amount, spent: 0, last: id, lastKind: 'claim'});
