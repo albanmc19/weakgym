@@ -87,14 +87,19 @@ async function notifyPost(env, p, vapid) {
   if (!ids.length) return;
   const users = await fsBatchGet(env, ['users/' + p.uid, ...ids.map(i => 'users/' + i)]), by = {}; users.forEach(u => { by[idOf(u)] = u; });
   const author = by[p.uid]; if (author && g(author, 'blocked') === true) return;
-  const name = String(g(author, 'name') || 'Un membre').slice(0, 60);
-  const who = ids.filter(i => by[i] && g(by[i], 'notif') === true && g(by[i], 'blocked') !== true);
+  const name = String(g(author, 'name') || 'Un membre').split(' ')[0].slice(0, 40);
+  let who = ids.filter(i => by[i] && g(by[i], 'notif') === true && g(by[i], 'notifSocial') !== false && g(by[i], 'blocked') !== true);   // respecte la case « Prévenir quand un membre que je suis publie »
+  if (g(author, 'private') === true && who.length) {   // profil privé : seulement les membres que l'auteur suit en retour (comme dans l'appli)
+    const back = await fsQuery(env, { from: [{ collectionId: 'follows' }], where: eq('from', p.uid), limit: 500 });
+    const okSet = new Set(back.map(x => g(x, 'to'))); who = who.filter(i => okSet.has(i));
+  }
+  if (!who.length) return;
   const subs = [];
   for (let i = 0; i < who.length && BUDGET > 8; i += 30) {
     const part = who.slice(i, i + 30);
     subs.push(...await fsQuery(env, { from: [{ collectionId: 'pushSubs' }], where: { fieldFilter: { field: { fieldPath: 'uid' }, op: 'IN', value: { arrayValue: { values: part.map(x => ({ stringValue: x })) } } } } }));
   }
-  const payload = JSON.stringify({ wg: 1, title: name, body: 'vient de poster une photo', tag: 'wg-post-' + p.id, hash: '#/social' }), jwts = {};
+  const payload = JSON.stringify({ wg: 1, title: name + ' a publié une photo 📸', body: p.text ? String(p.text).slice(0, 100) : 'Viens voir sa nouvelle publication.', tag: 'wg-post-' + p.id, hash: '#/social' }), jwts = {};
   const subject = 'https://' + JSON.parse(env.SA_JSON).project_id + '.firebaseapp.com';
   for (const s of subs) {
     if (BUDGET <= 1) break;
@@ -116,7 +121,7 @@ async function run(env) {
   const vapid = await getVapid(env, meta);
   for (const d of docs) {
     if (BUDGET < 10) break;   // le reste sera traité à la minute suivante
-    const p = { id: idOf(d), uid: g(d, 'uid'), at: g(d, 'at'), review: g(d, 'review') };
+    const p = { id: idOf(d), uid: g(d, 'uid'), at: g(d, 'at'), review: g(d, 'review'), text: g(d, 'text') };
     await fsPatch(env, 'meta/push', { lastAt: p.at });   // marqué avant l'envoi : jamais de doublon
     if (p.review === true || !p.uid) continue;           // photo douteuse : pas de notification
     await notifyPost(env, p, vapid);
