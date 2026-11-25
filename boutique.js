@@ -15,7 +15,13 @@
 const REWARD = {seance: 20, poids: 5, quete: 25};   // doit rester identique aux règles Firestore
 const CATALOG = [
   {id: 'badge-boutique', type: 'badge', name: 'Badge Boutique', price: 250,
-   desc: 'Un badge exclusif affiché à côté de ton nom, sur ton profil et tes publications. À toi pour toujours.'}
+   desc: 'Un badge exclusif affiché à côté de ton nom, sur ton profil et tes publications. À toi pour toujours.'},
+  {id: 'badge-flamme', type: 'badge', name: 'Badge Flamme', price: 100,
+   desc: 'Pour ceux qui ne lâchent rien : une flamme à côté de ton nom, sur ton profil et tes publications.'},
+  {id: 'badge-haltere', type: 'badge', name: 'Badge Haltère', price: 500,
+   desc: 'L’emblème des acharnés de la fonte, affiché à côté de ton nom. À toi pour toujours.'},
+  {id: 'badge-couronne', type: 'badge', name: 'Badge Couronne', price: 1000,
+   desc: 'Le badge le plus rare de WeakGym. Réservé à ceux qui vont au bout.'}
 ];
 
 /* ---------- badges de boutique (en plus des badges admin de social.js) ---------- */
@@ -26,6 +32,12 @@ const WC_BADGES = {
     mark: '<circle cx="12" cy="12" r="4.6" fill="none" stroke="#fff" stroke-width="1.7"/><rect x="10.9" y="9.3" width="2.4" height="5.4" rx=".8" fill="#fff" transform="translate(12 12) skewX(-12) translate(-12 -12)"/>'
   }
 };
+WC_BADGES['badge-flamme'] = {label: 'Badge Flamme', color: '#f97316',
+  mark: '<path fill="#fff" d="M12 6.4c.7 2.1 2.9 3.1 2.9 5.7a2.9 2.9 0 0 1-5.8 0c0-1.2.5-2 1.1-2.7.2 1 .8 1.4 1.3 1.4-.2-1.600-.2-3 .5-4.400z"/>'};
+WC_BADGES['badge-haltere'] = {label: 'Badge Haltère', color: '#0ea5e9',
+  mark: '<path fill="#fff" d="M7.4 9.6h1.4v4.8H7.400zM15.200 9.600h1.400v4.800h-1.400zM9.300 8.400h1.400v7.200H9.300zM13.300 8.400h1.400v7.200h-1.400zM10.700 11.300h2.600v1.400h-2.600z"/>'};
+WC_BADGES['badge-couronne'] = {label: 'Badge Couronne', color: '#eab308',
+  mark: '<path fill="#fff" d="M7 15.600V9.400l2.600 2.300L12 8l2.400 3.700L17 9.400v6.200z"/>'};
 const badgeSvg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${SEAL}${WC_BADGES[k].mark}</svg>`;
 /* appelé par wgBadges() de social.js : renvoie les badges de boutique possédés par un membre */
 window.wcBadgesHtml = u => !u || !Array.isArray(u.items) ? '' : Object.keys(WC_BADGES).filter(k => u.items.includes(k)).map(k =>
@@ -58,6 +70,7 @@ st.textContent = `
 .wc-how li{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .wc-how li:first-child{border-top:0}
 .wc-how li span{flex:1}
+.wc-how em.neg{color:var(--bad)}
 .wc-how em{font-style:normal;font:800 18px var(--hf);color:var(--acc);display:inline-flex;align-items:center;gap:5px}
 .wc-empty{text-align:center;color:var(--mute);padding:26px 18px}
 .wc-win{text-align:center}
@@ -115,7 +128,7 @@ function wcToast(text) {
 /* ---------- portefeuille ---------- */
 async function getWallet() {
   try { const d = await db.collection('wallet').doc(user.uid).get(); const w = d.exists ? d.data() : {}; return {earned: w.earned || 0, spent: w.spent || 0}; }
-  catch (e) { return {earned: 0, spent: 0}; }
+  catch (e) { return {earned: 0, spent: 0, err: true}; }
 }
 const balanceOf = w => Math.max(0, w.earned - w.spent);
 
@@ -615,21 +628,24 @@ async function boutiquePage() {
 
   const card = it => {
     const price = prices[it.id], has = owned.has(it.id), left = price - bal;
+    const bar = !has && price != null && !w.err && left > 0 ? `<div class="bar" aria-hidden="true"><i style="width:${Math.min(100, Math.round(bal / price * 100))}%"></i></div>` : '';
     const preview = it.type === 'badge' && WC_BADGES[it.id] ? `<span style="color:${WC_BADGES[it.id].color}">${badgeSvg(it.id)}</span>` : coin(64);
     const act = has ? '<span class="tag">✓ Possédé à vie</span>'
       : price == null ? '<span class="mute">Bientôt disponible</span>'
-      : `<button data-b="${esc(it.id)}" ${left > 0 ? 'disabled' : ''}>${left > 0 ? `Il te manque ${fmtN(left)}` : 'Acheter'}</button>`;
+      : `<button data-b="${esc(it.id)}" ${left > 0 || w.err ? 'disabled' : ''}>${w.err ? 'Solde indisponible' : left > 0 ? `Il te manque ${fmtN(left)}` : 'Acheter'}</button>`;
     return `<article class="card wc-it ${has ? 'own' : ''}">${has ? '<span class="wc-own">ACHETÉ</span>' : ''}
       <div class="wc-ph">${preview}</div>
       <h3>${esc(it.name)}</h3><p>${esc(it.desc)}</p>
-      <div class="wc-ft"><span class="wc-pr">${coin(22)}${price == null ? '–' : fmtN(price)}</span>${act}</div></article>`;
+      ${bar}<div class="wc-ft"><span class="wc-pr">${coin(22)}${price == null ? '–' : fmtN(price)}</span>${act}</div></article>`;
   };
 
   app.innerHTML = `<h1>Boutique</h1><p class="mute" style="margin:0 0 6px">Dépense tes WeakCoins pour débloquer des articles.</p>
-    <div class="card wc-bal">${coin(64)}<div><small>Mon solde</small><b id="wcn">${fmtN(bal)}<span>WeakCoins</span></b></div></div>
+    <div class="card wc-bal">${coin(64)}<div><small>Mon solde</small><b id="wcn">${w.err ? '–' : fmtN(bal)}<span>WeakCoins</span></b></div></div>
+    ${w.err ? '<p class="err" style="margin:8px 0 0">Solde indisponible (connexion ?). <button class="link" id="wcretry" type="button">Réessayer</button></p>' : ''}
     <h2>Articles</h2>
     ${CATALOG.length ? `<div class="wc-grid">${CATALOG.map(card).join('')}</div><p class="mute" style="font-size:14px">D’autres articles arrivent bientôt.</p>` : '<div class="card wc-empty">La boutique est vide pour le moment. Reviens bientôt !</div>'}
     <h2>Quêtes</h2>${questsHtml(socials, claimed, prof, w)}
+    <h2>Historique</h2><div id="wchist"><p class="mute">Chargement…</p></div>
     <h2>Gagner des WeakCoins</h2>
     <div class="card"><ul class="wc-how">
       <li>${icon('dumb')}<span><b>Terminer une séance</b><br><span class="mute">Coche tous les exercices (une fois par séance)</span></span><em>+${REWARD.seance}${coin(18)}</em></li>
@@ -639,8 +655,10 @@ async function boutiquePage() {
     </ul></div>`;
   app.querySelectorAll('.wc-how .ic').forEach(i => { i.style.cssText = 'width:26px;height:26px;color:var(--acc);flex:none'; });
 
+  const rt = $('#wcretry'); if (rt) rt.onclick = () => boutiquePage();
   wireQuests(claimed);
   wireDaily();
+  wcHistory();
   app.querySelectorAll('[data-b]').forEach(b => b.onclick = () => {
     const it = CATALOG.find(x => x.id === b.dataset.b), price = prices[it.id];
     const m = wcSheet(`<h2 style="margin-top:0">Confirmer l’achat</h2>
@@ -655,6 +673,31 @@ async function boutiquePage() {
       catch (e) { const er = m.q('#wce'); er.textContent = e.code === 'permission-denied' ? 'Achat refusé : solde ou prix invalide. Réessaie.' : (e.message || 'Erreur'); er.hidden = false; y.disabled = false; }
     };
   });
+}
+
+/* ---------- historique : 20 dernières opérations (gains = wcClaims, achats = wcBuys) ---------- */
+const claimLabel = x => {
+  const r = String(x.ref || '');
+  if (x.kind === 'seance') return 'Séance terminée';
+  if (x.kind === 'poids') return 'Pesée du jour';
+  if (x.kind === 'quete') { const n = NETS.find(n => n.id === r); return 'Quête ' + (n ? n.name : r); }
+  if (x.kind === 'defi') { const d = DEFIS.find(d => d.id === r); return d ? d.title : 'Quête'; }
+  if (x.kind === 'daily') { const p = POOL.find(p => p.id === r.split('_')[1]); return 'Quête du jour' + (p ? ' · ' + p.title : ''); }
+  return 'Gain';
+};
+async function wcHistory() {
+  const box = document.getElementById('wchist'); if (!box) return;
+  try {
+    const [c, bu] = await Promise.all([db.collection('wcClaims').where('uid', '==', user.uid).get(),
+      db.collection('wcBuys').where('uid', '==', user.uid).get().catch(() => ({docs: []}))]);
+    const rows = [
+      ...c.docs.map(d => { const x = d.data(); return {at: x.at || 0, amt: +x.amount || 0, t: claimLabel(x)}; }),
+      ...bu.docs.map(d => { const x = d.data(), it = CATALOG.find(i => i.id === x.item); return {at: x.at || 0, amt: -(+x.price || 0), t: 'Achat · ' + (it ? it.name : x.item)}; })
+    ].sort((p, q) => q.at - p.at).slice(0, 20);
+    if (!document.body.contains(box)) return;
+    box.innerHTML = rows.length ? `<div class="card"><ul class="wc-how">${rows.map(r => `<li><span><b>${esc(r.t)}</b><br><span class="mute">${new Date(r.at).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}</span></span><em class="${r.amt < 0 ? 'neg' : ''}">${r.amt < 0 ? '−' : '+'}${fmtN(Math.abs(r.amt))}${coin(18)}</em></li>`).join('')}</ul></div>`
+      : '<div class="card wc-empty">Aucune opération pour le moment.</div>';
+  } catch (e) { box.innerHTML = ''; }
 }
 
 /* écran de confirmation après un achat */
