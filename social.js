@@ -440,7 +440,63 @@ async function profilePage(uid) {
   };
 }
 
+/* ---------- notifications : un abonnement publie une photo ----------
+   Seuls reçoivent l'alerte les membres ABONNÉS à l'auteur (collection follows : from = moi, to = l'auteur).
+   Pas d'alerte pour : ses propres photos, les non-abonnés, les photos en vérification/masquées,
+   les comptes bloqués, les profils privés sans abonnement mutuel. */
+let stopPosts = null;
+async function socNotify(title, body, tag) {
+  const c = await notifCfg(), opt = {body, icon: c.icon, badge: c.icon, tag, data: {url: './#/social'}};
+  try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg && reg.showNotification) return await reg.showNotification(title, opt); } catch (e) {}
+  try { const n = new Notification(title, opt); n.onclick = () => { window.focus(); location.hash = '#/social'; n.close(); }; } catch (e) {}
+}
+function socToast(text) {
+  const t = document.createElement('a'); t.className = 'soc-toast'; t.href = '#/social'; t.textContent = text;
+  t.onclick = () => t.remove(); document.body.appendChild(t); setTimeout(() => t.remove(), 7000);
+}
+function watchPosts() {
+  if (stopPosts) { stopPosts(); stopPosts = null; }
+  if (!user) return;
+  const me = user.uid, key = 'wg_soc_seen_' + me, done = new Set(), unsubs = [];
+  let alive = true, fol = null, back = null, started = false;
+  stopPosts = () => { alive = false; unsubs.forEach(f => f()); };
+  const canPush = () => myProf.notif === true && 'Notification' in window && Notification.permission === 'granted';
+  const handle = async list => {
+    const ok = [];
+    for (const p of list) {
+      let u = {}; try { u = (await db.collection('users').doc(p.uid).get()).data() || {}; } catch (e) {}
+      if (u.blocked === true || (u.private === true && !back.has(p.uid))) continue;
+      ok.push({p, name: String(u.name || 'Un membre').split(' ')[0]});
+    }
+    if (!alive || !ok.length || myProf.notifSocial === false) return;
+    const one = ok.length === 1 ? ok[0] : null;
+    const title = one ? one.name + ' a publié une photo 📸' : 'Nouvelles photos 📸';
+    const body = one ? (one.p.text ? one.p.text.slice(0, 100) : 'Viens voir sa nouvelle publication.') : ok.length + ' nouvelles publications de tes abonnements.';
+    if (!document.hidden) { socToast(one ? title : body); return; }
+    if (canPush()) socNotify(title, body, one ? 'wg-post-' + one.p.id : 'wg-posts');
+  };
+  const start = () => {
+    if (started || !fol || !back) return; started = true;
+    let last = 0; try { last = +localStorage.getItem(key) || 0; } catch (e) {}
+    const since = Math.max(last, Date.now() - 3 * 864e5);   // rattrapage : jusqu'à 3 jours
+    unsubs.push(POSTS().where('at', '>', since).onSnapshot(sn => {
+      const fresh = [];
+      sn.docChanges().forEach(ch => {
+        if (ch.type === 'removed') return;
+        const p = {id: ch.doc.id, ...ch.doc.data()};
+        if (done.has(p.id) || p.uid === me || !fol.has(p.uid) || !okImg(p.img) || hiddenPost(p)) return;
+        done.add(p.id); fresh.push(p);
+      });
+      try { localStorage.setItem(key, String(Date.now())); } catch (e) {}
+      if (fresh.length) handle(fresh).catch(() => {});
+    }, () => {}));
+  };
+  unsubs.push(db.collection('follows').where('from', '==', me).onSnapshot(s => { fol = new Set(s.docs.map(d => d.data().to)); start(); }, () => {}));
+  unsubs.push(db.collection('follows').where('to', '==', me).onSnapshot(s => { back = new Set(s.docs.map(d => d.data().from)); start(); }, () => {}));
+}
+
 window.wgBadges = wgBadges;
+window.watchSocialPosts = watchPosts;
 window.socialPage = socialPage;
 window.membersPage = membersPage;
 window.profilePage = profilePage;
