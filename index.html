@@ -590,7 +590,7 @@ auth.onAuthStateChanged(async u => {
   if (user && myProf.onboarded === undefined && myProf.seen === undefined && !myProf.name) myProf.onboarded = false;
   const refId = user && myProf.seen === undefined && !myProf.name && !myProf.refBy && refGet() !== user.uid ? refGet() : '';   // nouveau compte arrivé via un lien de parrainage
   if (user) db.collection('users').doc(user.uid).set({name: myProf.name || nm(user), email: user.email, seen: Date.now(), ...(myProf.joined ? {} : {joined: Date.parse(u.metadata && u.metadata.creationTime) || Date.now()}), ...(refId ? {refBy: refId} : {})}, {merge: true}).then(() => { if (refId) { try { localStorage.removeItem(REFKEY); } catch (e) {} } return myProf.onboarded === false ? db.collection('users').doc(user.uid).set({onboarded: false}, {merge: true}) : null; }).catch(() => {});
-  beatSync(); setWho(); Promise.resolve(route()).catch(() => {}).then(hideSplash); notifCheck();
+  beatSync(); setWho(); Promise.resolve(route()).catch(() => {}).then(hideSplash); notifCheck(); try { window.wgPush && wgPush.sync(); } catch (e) {}
 });
 $('#out').onclick = () => { bye(); stopRest(); auth.signOut(); };
 addEventListener('hashchange', route);
@@ -2642,7 +2642,7 @@ async function notifCheck() {
       const s = (await all()).find(x => x.date === t); if (!s) return;
       const l = await db.collection('logs').doc(s.id + '_' + user.uid).get();
       if (l.exists && s.exercises.length && s.exercises.every((_, i) => (l.data().done || {})[i])) return;
-      body = fillTpl(pickOne(c.hooks), {prenom: first, titre: s.title, n: s.exercises.length});
+      body = fillTpl(pickOne(c.hooks), {prenom: first, titre: s.title, n: s.exercises.length}) + ' (+' + ((window.WC_REWARD || {}).seance || 20) + ' WeakCoins à la clé)';
     }
     try { localStorage.setItem('wg_nlast', t); } catch (e) {}
     await showNotif(c.title, body, 'wg-' + t);
@@ -2708,7 +2708,7 @@ async function onboarding() {
     if ($('#obon')) $('#obon').onclick = async () => {
       const b = $('#obon'); b.disabled = true;
       let p = 'denied'; try { p = await Notification.requestPermission(); } catch (e) {}
-      if (p === 'granted') { await finish(true); try { await showNotif(cfg.title, 'Rappels activés. À très vite pour ta prochaine séance !', 'wg-welcome'); } catch (e) {} }
+      if (p === 'granted') { await finish(true); try { window.wgPush && wgPush.sync(true); } catch (e) {} try { await showNotif(cfg.title, 'Rappels activés. À très vite pour ta prochaine séance !', 'wg-welcome'); } catch (e) {} }
       else { b.disabled = false; const er = $('#obe'); er.textContent = 'Notifications refusées. Tu pourras les activer plus tard depuis ton compte.'; er.hidden = false; $('#obno').textContent = 'Continuer sans'; }
     };
   };
@@ -2739,9 +2739,9 @@ function wirePrefs() {
   drawX();
   $('#nbtn').onclick = async () => {
     const on = myProf.notif === true && Notification.permission === 'granted';
-    if (on) { await save({notif: false}); return drawN(); }
+    if (on) { await save({notif: false}); try { window.wgPush && await wgPush.unsubscribe(); } catch (e) {} return drawN(); }
     let p = 'denied'; try { p = await Notification.requestPermission(); } catch (e) {}
-    if (p === 'granted') { await save({notif: true}); try { await showNotif((NCFG || NDEF).title, 'Rappels activés. À très vite pour ta prochaine séance !', 'wg-welcome'); } catch (e) {} }
+    if (p === 'granted') { await save({notif: true}); try { window.wgPush && wgPush.sync(true); } catch (e) {} try { await showNotif((NCFG || NDEF).title, 'Rappels activés. À très vite pour ta prochaine séance !', 'wg-welcome'); } catch (e) {} }
     drawN();
   };
   notifCfg().then(drawN); drawN();
@@ -3318,6 +3318,7 @@ const WGShare = (() => {
   return {session, record, stats, weekGoal, weight, weightGoal, getTarget, setTarget, close, _render: renderCard, _open: open};
 })();
 </script>
+<script src="notifs.js"></script>
 <script src="social.js"></script>
 <script src="boutique.js"></script>
 <script>
