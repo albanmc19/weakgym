@@ -431,7 +431,10 @@ async function profilePage(uid) {
     if (!name) { er.textContent = 'Le nom ne peut pas être vide.'; er.hidden = false; return; }
     b.disabled = true;
     try {
-      const data = {name, bio: $('#edb').value.trim().slice(0, 140), photo: photo || F.delete(), hideJoined: $('#edj').checked ? F.delete() : true, private: $('#edp').checked ? true : F.delete()};
+      const data = {name, bio: $('#edb').value.trim().slice(0, 140), photo: photo || F.delete(), hideJoined: $('#edj').checked ? F.delete() : true};
+      // le choix « profil privé » est enregistré À PART : il ne dépend ainsi d'aucun autre champ de la fiche
+      // (chaque membre ne peut modifier que SA propre fiche : règles Firestore, uid == auth.uid)
+      await db.collection('users').doc(uid).update({private: $('#edp').checked ? true : F.delete()});
       await db.collection('users').doc(uid).update(data);
       myProf = {...myProf, name, bio: data.bio, photo}; if (!photo) delete myProf.photo;
       if ($('#edj').checked) delete myProf.hideJoined; else myProf.hideJoined = true;
