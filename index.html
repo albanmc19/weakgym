@@ -728,8 +728,11 @@ async function keepAwake() { try { if (navigator.wakeLock && !wl) { wl = await n
 
 async function historyPage() {
   app.innerHTML = `<h1>Historique</h1>${seg('hist')}<input id="hq" type="search" placeholder="Rechercher une séance ou un exercice" aria-label="Rechercher"><div id="hl" style="margin-top:8px"><p class="mute">Chargement…</p></div>`;
-  const [ss, logs] = await Promise.all([all(), logsOf(user.uid)]);
+  const [ss0, logs, ps] = await Promise.all([all(), logsOf(user.uid), PC().where('uid', '==', user.uid).get().then(q => q.docs.map(d => ({id: d.id, ...d.data()}))).catch(() => [])]);
   const by = {}; logs.forEach(l => { by[l.sessionId] = l; });
+  const ss = [...ss0];   // + séances perso faites (id = <idPerso>~AAAA-MM-JJ)
+  logs.forEach(l => { const [pid, d] = String(l.sessionId).split('~'); const q = d && ps.find(x => x.id === pid); if (q) ss.push({...q, id: l.sessionId, date: d}); });
+  ss.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
   let rows = ss.map(x => {
     const l = by[x.id]; if (!l) return null;
     const n = x.exercises.filter((_, i) => l.done && l.done[i]).length;
@@ -1369,9 +1372,16 @@ async function adminList() {
 }
 
 async function viewSession(id, label) {
-  const doc = await db.collection('sessions').doc(id).get();
+  let doc = await db.collection('sessions').doc(id).get(), perso = false;
+  if (!doc.exists) {   // séance perso : id = <idPerso>~AAAA-MM-JJ (une fiche de suivi par jour, les anciennes charges sont conservées)
+    try { const p = await db.collection('mysessions').doc(id.split('~')[0]).get(); if (p.exists && p.data().uid === user.uid) { doc = p; perso = true; } } catch (e) {}
+  }
   if (!doc.exists) { app.innerHTML = '<h1>Séance introuvable</h1>'; return; }
   const s = doc.data();
+  if (perso) {
+    const dd = id.split('~')[1]; s.date = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(dd || '') ? dd : today();
+    id = id.split('~')[0] + '~' + s.date; label = label || 'Ma séance perso';
+  }
   const logRef = db.collection('logs').doc(id + '_' + user.uid);
   const mine = Object.assign({done: {}, w: {}, note: '', sets: {}}, (await logRef.get()).data());
   mine.w = mine.w || {}; mine.sets = mine.sets || {};
@@ -1423,7 +1433,7 @@ async function viewSession(id, label) {
       ${okUrl(e.video) ? `<a class="vid" href="${esc(e.video)}" target="_blank" rel="noopener noreferrer">▶ Voir la vidéo</a>` : ''}</article>`).join('')}</div>
     <label for="note">Mon ressenti</label><textarea id="note" rows="3">${esc(mine.note)}</textarea>
     <p class="row" style="align-items:center"><button id="save" style="flex:none">Enregistrer</button><button id="shr" class="${n && n === s.exercises.length ? '' : 'alt'}" style="flex:none">Partager…</button><span id="ok" class="tag" style="flex:none"></span></p>
-    ${isAdmin ? `<h2>Suivi</h2><div id="track" class="mute">Chargement…</div><p class="row" style="flex-wrap:wrap"><a class="btn alt" href="#/admin/${id}">Modifier la séance</a><button class="alt" id="cpy">Copier…</button><button class="del" id="sdel">Supprimer la séance</button></p>` : ''}`;
+    ${isAdmin && !perso ? `<h2>Suivi</h2><div id="track" class="mute">Chargement…</div><p class="row" style="flex-wrap:wrap"><a class="btn alt" href="#/admin/${id}">Modifier la séance</a><button class="alt" id="cpy">Copier…</button><button class="del" id="sdel">Supprimer la séance</button></p>` : ''}`;
     app.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => { mine.done[c.dataset.i] = c.checked; if (c.checked) { const ex = s.exercises[c.dataset.i], r = parseRest(ex.rest); if (r) startRest(r, ex.name); } grab(); stash(); save(false); });
     app.querySelectorAll('[data-sw]').forEach(inp => inp.oninput = () => { upd(inp.dataset.sw.split(':')[0]); auto(); });
     app.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => {
@@ -1444,9 +1454,9 @@ async function viewSession(id, label) {
     if ($('#note')) $('#note').oninput = () => { mine.note = $('#note').value; auto(); };
     $('#shr').onclick = () => { if ($('#note')) mine.note = $('#note').value; WGShare.session(s, mine, id); };
     fill();
-    if (isAdmin) $('#cpy').onclick = () => copyModal(s);
-    if (isAdmin) $('#sdel').onclick = async () => { if (!confirm('« ' + s.title + ' » (' + fmt(s.date) + ')\n' + delMsg(1))) return; try { await purgeSessions([id]); location.hash = '#/admin'; } catch (e) { alert(e.message); } };
-    if (isAdmin) db.collection('logs').where('sessionId', '==', id).get().then(q => {
+    if (isAdmin && !perso) $('#cpy').onclick = () => copyModal(s);
+    if (isAdmin && !perso) $('#sdel').onclick = async () => { if (!confirm('« ' + s.title + ' » (' + fmt(s.date) + ')\n' + delMsg(1))) return; try { await purgeSessions([id]); location.hash = '#/admin'; } catch (e) { alert(e.message); } };
+    if (isAdmin && !perso) db.collection('logs').where('sessionId', '==', id).get().then(q => {
       $('#track').innerHTML = q.empty ? 'Personne n’a encore validé d’exercice.' : q.docs.map(d => {
         const l = d.data(), ok = s.exercises.map((e, i) => [e, i]).filter(([, i]) => l.done && l.done[i]);
         return `<div class="card"><b>${esc(l.name)}</b> : ${ok.length}/${s.exercises.length} faits<br>${ok.map(([e, i]) => '✓ ' + esc(e.name) + (l.w && l.w[i] ? ' — ' + esc(l.w[i]) : '')).join('<br>') || '<span class="mute">rien de coché</span>'}${l.note ? `<br><i>« ${esc(l.note)} »</i>` : ''}</div>`;
@@ -1458,7 +1468,7 @@ async function viewSession(id, label) {
     const sets = {}; Object.keys(mine.sets).forEach(i => { const a = mine.sets[i].map(x => String(x).trim().slice(0, 30)); if (a.some(Boolean)) sets[i] = a; });
     const t0 = Date.now();
     await logRef.set({uid: user.uid, name: nm(user), sessionId: id, done: mine.done, w: mine.w, sets, note: mine.note, updatedAt: t0});
-    try { window.wcSession && wcSession(id, s.exercises.length, mine.done); } catch (e) {}   // WeakCoin : récompense si la séance est terminée
+    try { !perso && window.wcSession && wcSession(id, s.exercises.length, mine.done); } catch (e) {}   // WeakCoin : récompense si la séance est terminée
     if (dirtyAt <= t0) { try { localStorage.removeItem(dk); } catch (e) {} }   // rien de plus récent à envoyer : le brouillon n'est plus utile
     delete histCache[user.uid];
     if (manual) { if ($('#ok')) $('#ok').textContent = 'Enregistré'; } else render();
@@ -1570,7 +1580,7 @@ async function calendarPage() {
 
 const short = d => new Date(d + 'T12:00').toLocaleDateString(WG.loc, {day: 'numeric', month: 'short'});
 const parseLoad = w => { const m = /(\d+(?:[.,]\d+)?)\s*kg/i.exec(w) || /(\d+(?:[.,]\d+)?)/.exec(w); return m ? parseFloat(m[1].replace(',', '.')) : null; };
-const CARDIO = /tapis|course|running|jogging|footing|marche|v[ée]lo|bike|cycling|elliptique|rameur|rowing machine|stepper|escalier|stair|natation|nage|corde [àa] sauter|saut [àa] la corde|jump rope|hiit|cardio|gainage|planche|plank|[ée]chauffement|[ée]tirement|stretch|yoga|boxe|sprint|airdyne|ski[- ]?erg|assault bike|crossfit|aquabike|trampoline|danse|zumba/i;
+const CARDIO = /tapis|course|running|jogging|footing|marche|(?:^|[^a-zà-ÿ])v[ée]lo|bike|cycling|elliptique|rameur|rowing machine|stepper|escalier|stair|natation|nage|corde [àa] sauter|saut [àa] la corde|jump rope|hiit|cardio|gainage|planche|plank|[ée]chauffement|[ée]tirement|stretch|yoga|boxe|sprint|airdyne|ski[- ]?erg|assault bike|crossfit|aquabike|trampoline|danse|zumba/i;
 const TIMETXT = /\b\d+(?:[.,]\d+)?\s*(?:min|mn|minutes?|sec|secondes?)\b|\b\d+\s*s\b|\b\d+\s*h\b/i;
 const isTime = e => !!e && e.min === true;   // kg par défaut : minutes uniquement si la coche « Exercice en minutes » est activée
 const uOf = e => isTime(e) ? 'min' : 'kg';
@@ -1596,11 +1606,13 @@ async function logsOf(uid) {
 async function getHistory(uid, fresh) {
   const c = histCache[uid];
   if (!fresh && c && Date.now() - c.t < 300000) return c.v;
-  const [ss, logs] = await Promise.all([all(), logsOf(uid)]);
+  const [ss, logs, ps] = await Promise.all([all(), logsOf(uid), PC().where('uid', '==', uid).get().then(q => q.docs.map(d => ({id: d.id, ...d.data()}))).catch(() => [])]);
   const byId = {}; ss.forEach(s => { byId[s.id] = s; });
+  // séance perso lancée un jour donné : id = <idPerso>~AAAA-MM-JJ
+  const persoRun = sid => { const [pid, d] = String(sid).split('~'); const p = d && ps.find(x => x.id === pid); return p ? {...p, id: sid, date: d} : null; };
   const entries = [], done = [];
   logs.forEach(l => {
-    const s = byId[l.sessionId]; if (!s) return;
+    const s = byId[l.sessionId] || persoRun(l.sessionId); if (!s) return;
     const n = s.exercises.filter((_, i) => l.done && l.done[i]).length;
     if (n) done.push({date: s.date, id: s.id, title: s.title, n, total: s.exercises.length});
     s.exercises.forEach((e, i) => {
@@ -2592,7 +2604,7 @@ async function persoPage(openId) {
     const mine = x => x.uid === user.uid, dt = x => new Date(x.updatedAt || x.createdAt || Date.now()).toLocaleDateString(WG.loc, {day: 'numeric', month: 'short'});
     $('#pl').innerHTML = list.length ? list.map(x => `<details class="card act pj" ${x.id === openId ? 'open' : ''}><summary><span style="flex:1"><b>${esc(x.title)}</b>${sTag(x)}<br><span class="mute">${x.exercises.length} exercice${x.exercises.length > 1 ? 's' : ''}${mine(x) ? '' : ' · ' + esc(x.owner || 'Membre')} · ${esc(dt(x))}</span></span><span class="chev" aria-hidden="true">⌄</span></summary>
       <ol class="pex">${x.exercises.map(e => `<li><b>${esc(e.name)}</b>${detail(e) ? `<br><span class="mute">${esc(detail(e))}</span>` : ''}</li>`).join('')}</ol>
-      ${mine(x) ? `<p class="row"><button class="alt" data-e="${esc(x.id)}">Modifier</button><button class="alt" data-c="${esc(x.id)}">Dupliquer</button><button class="del" data-x="${esc(x.id)}">Supprimer</button></p>` : '<p class="mute">Lecture seule.</p>'}</details>`).join('') : '<p class="mute">Aucune séance pour l’instant. Crée-en une, ou demande à l’assistant : « génère une séance dos 45 min ».</p>';
+      ${mine(x) ? `<p class="row"><a class="btn" href="#/seance/${esc(x.id)}~${today()}">Faire cette séance</a><button class="alt" data-e="${esc(x.id)}">Modifier</button><button class="alt" data-c="${esc(x.id)}">Dupliquer</button><button class="del" data-x="${esc(x.id)}">Supprimer</button></p>` : '<p class="mute">Lecture seule.</p>'}</details>`).join('') : '<p class="mute">Aucune séance pour l’instant. Crée-en une, ou demande à l’assistant : « génère une séance dos 45 min ».</p>';
     const get = id => list.find(x => x.id === id), refresh = async () => { await load(); draw(); };
     $('#pl').querySelectorAll('[data-e]').forEach(b => b.onclick = () => persoEditor(get(b.dataset.e), refresh));
     $('#pl').querySelectorAll('[data-c]').forEach(b => b.onclick = async () => { const x = get(b.dataset.c); b.disabled = true; try { await savePerso(x.title + ' (copie)', x.exercises, undefined, x.cat); await refresh(); } catch (e) { b.disabled = false; alert(e.message); } });
