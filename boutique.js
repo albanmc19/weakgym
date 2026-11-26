@@ -39,12 +39,13 @@ WC_BADGES['badge-haltere'] = {label: 'Badge Haltère', color: '#0ea5e9',
   mark: '<path fill="#fff" d="M7.4 9.6h1.4v4.8H7.400zM15.200 9.600h1.400v4.800h-1.400zM9.300 8.400h1.400v7.200H9.300zM13.300 8.400h1.400v7.200h-1.400zM10.700 11.300h2.600v1.400h-2.600z"/>'};
 WC_BADGES['badge-couronne'] = {label: 'Badge Couronne', color: '#eab308',
   mark: '<path fill="#fff" d="M7 15.600V9.400l2.600 2.300L12 8l2.400 3.700L17 9.400v6.200z"/>'};
-WC_BADGES['badge-assidu'] = {label: 'Badge Assidu', color: '#22c55e',
-  mark: '<path fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" d="M8 12.4l2.8 2.8L16.2 9.6"/>'};   // gagné avec la connexion quotidienne (connexion.js), pas en vente
+/* badge obtenu par la connexion quotidienne (pas dans CATALOG : il ne s'achète pas ; id identique aux règles Firestore et à connexion.js) */
+WC_BADGES['badge-assidu'] = {label: 'Badge Assidu', color: '#10b981',
+  mark: '<rect x="7" y="8.200" width="10" height="8.800" rx="1.800" fill="none" stroke="#fff" stroke-width="1.300"/><path fill="#fff" d="M7 10a1.800 1.800 0 0 1 1.800-1.800h6.400A1.800 1.800 0 0 1 17 10v1.300H7z"/><path d="M9.600 6.900v2.300M14.400 6.900v2.300" stroke="#fff" stroke-width="1.300" stroke-linecap="round"/><path fill="none" stroke="#fff" stroke-width="1.350" stroke-linecap="round" stroke-linejoin="round" d="M9.700 14.200l1.700 1.700 3-3.200"/>'};
 const badgeSvg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${SEAL}${WC_BADGES[k].mark}</svg>`;
 /* appelé par wgBadges() de social.js : renvoie les badges de boutique possédés par un membre */
 window.wcBadgesHtml = u => !u || !Array.isArray(u.items) ? '' : Object.keys(WC_BADGES).filter(k => u.items.includes(k)).map(k =>
-  `<span class="vb" style="color:${WC_BADGES[k].color}" role="img" aria-label="${WC_BADGES[k].label}" title="${WC_BADGES[k].label} · ${k === 'badge-assidu' ? 'gagné avec la connexion quotidienne' : 'acheté avec des WeakCoins'}">${badgeSvg(k)}</span>`).join('');
+  `<span class="vb" style="color:${WC_BADGES[k].color}" role="img" aria-label="${WC_BADGES[k].label}" title="${WC_BADGES[k].label} · ${k === 'badge-assidu' ? 'obtenu par la connexion quotidienne' : 'acheté avec des WeakCoins'}">${badgeSvg(k)}</span>`).join('');
 
 /* ---------- logo WeakCoin : pièce aux couleurs de l'appli, avec la barre penchée du logo WeakGym ---------- */
 const coin = (px = 20) => `<svg class="wc-coin" width="${px}" height="${px}" viewBox="0 0 48 48" role="img" aria-label="WeakCoin"><circle cx="24" cy="24" r="22" style="fill:var(--acc)"/><circle cx="24" cy="24" r="17.5" fill="none" stroke="var(--acc-ink)" stroke-opacity=".45" stroke-width="1.8"/><rect x="19" y="13" width="10" height="22" rx="3.4" style="fill:var(--acc-ink)" transform="translate(24 24) skewX(-12) translate(-24 -24)"/></svg>`;
@@ -677,7 +678,6 @@ async function boutiquePage() {
     <div class="card"><ul class="wc-how">
       <li>${icon('dumb')}<span><b>Terminer une séance</b><br><span class="mute">Coche tous les exercices (une fois par séance)</span></span><em>+${REWARD.seance}${coin(18)}</em></li>
       <li>${icon('user')}<span><b>Terminer des quêtes</b><br><span class="mute">Profil, séances, pesées, fidélité, réseaux : une fois chacune</span></span><em>10 à 60${coin(18)}</em></li>
-      <li>${icon('cal')}<span><b>Connexion quotidienne</b><br><span class="mute">Récupère ton bonus chaque jour (depuis l’accueil) : plus la série est longue, plus il est gros</span></span><em>5 à 100${coin(18)}</em></li>
       <li>${icon('flame')}<span><b>Quêtes du jour</b><br><span class="mute">3 nouvelles quêtes sport chaque jour, remises à zéro à minuit</span></span><em>+15${coin(18)}</em></li>
       <li>${icon('scale')}<span><b>Enregistrer ta pesée du jour</b><br><span class="mute">Une fois par jour</span></span><em>+${REWARD.poids}${coin(18)}</em></li>
     </ul></div>`;
@@ -743,8 +743,8 @@ function celebrate(it) {
   const p = m.q('#wcp'); if (p) p.onclick = () => { m.close(); location.hash = '#/profil/' + user.uid; };
 }
 
-/* petit accès pour connexion.js (connexion quotidienne) */
-window.wcApi = {wcToast, wcSheet, coin, fmtN, badgeSvg, WC_BADGES, setBal: v => { lastBal = v; }};
 window.boutiquePage = boutiquePage;
 window.wcBalance = async () => balanceOf(await getWallet());
+/* utilisé par connexion.js */
+window.wcApi = {coin, WC_BADGES, badgeSvg, wcToast, wcSheet, setBal: n => { lastBal = n; }};
 })();
