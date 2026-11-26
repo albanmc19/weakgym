@@ -11,6 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="social.css">
 <link rel="stylesheet" href="classe.css">
+<link rel="stylesheet" href="nouveautes.css">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -943,7 +944,7 @@ async function musicPage() {
 async function plusPage() {
   const row = (h, t, sub) => `<a class="card item" href="${h}"><span><b>${t}</b><br><span class="mute">${sub}</span></span><span class="mute">›</span></a>`;
   app.innerHTML = `<h1>${esc(nm(user))}</h1><p class="mute">${esc(user.email)}${isAdmin ? ' · administrateur' : ''}</p>
-  ${row('#/profil', 'Mon profil', 'Photo, abonnés, statut')}${row('#/poids', 'Mon poids', 'Suivi et import Basic-Fit')}${row('#/membres', 'Membres', 'Trouver et suivre des personnes')}${row('#/musique', 'Musique', 'Spotify, playlists, lecture')}${row('#/parrainage', 'Parrainage', 'Invite tes amis à rejoindre WeakGym')}
+  ${row('#/profil', 'Mon profil', 'Photo, abonnés, statut')}${row('#/poids', 'Mon poids', 'Suivi et import Basic-Fit')}${row('#/membres', 'Membres', 'Trouver et suivre des personnes')}${row('#/musique', 'Musique', 'Spotify, playlists, lecture')}${row('#/parrainage', 'Parrainage', 'Invite tes amis à rejoindre WeakGym')}${row('#/nouveautes', 'Nouveautés', 'Dernière mise à jour : ' + (window.wgNews ? wgNews.label : '—'))}
   ${isAdmin ? '<h2>Administration</h2>' + row('#/activite', 'Activité', 'Ce que font les inscrits') + row('#/admin', 'Gérer les séances', 'Créer, modifier, copier') + row('#/inscrits', 'Inscrits', 'Bloquer, supprimer, écrire') : ''}
   ${prefsHtml()}<div id="wcsoc"></div><h2>Compte</h2><button id="lo" class="alt" style="width:100%">Se déconnecter</button>`;
   $('#lo').onclick = () => { bye(); stopRest(); auth.signOut(); };
@@ -1284,6 +1285,7 @@ async function route() {
     if (page === 'musique') return await musicPage();
     if (page === 'classe') return await classePage();
     if (page === 'plus') return await plusPage();
+    if (page === 'nouveautes') return nouveautesPage();
     if (page === 'calendrier') return await calendarPage();
     if (page === 'activite' && isAdmin) return await activityPage(id);
     if (page === 'inscrits' && isAdmin) return await usersPage();
@@ -3342,6 +3344,7 @@ const WGShare = (() => {
 <script src="social.js"></script>
 <script src="boutique.js"></script>
 <script src="classe.js"></script>
+<script src="nouveautes.js"></script>
 <script src="live.js"></script>
 <script src="update.js"></script>
 <script>
