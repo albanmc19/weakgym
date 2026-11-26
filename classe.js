@@ -203,11 +203,11 @@ auth.onAuthStateChanged(u => {
     // 1. mon rang : au démarrage (au plus toutes les 10 min) …
     let last = 0; try { last = +localStorage.getItem('wg_rk_at_' + u.uid) || 0; } catch (e) {}
     if (Date.now() - last < 10 * 60000) rkLoad(); else { try { await syncMine(); } catch (e) {} }
-    // … et dès que je modifie une séance (mise à jour 15 s plus tard, la première lecture est ignorée)
+    // … et dès que je modifie une séance (mise à jour 2,5 s plus tard, la première lecture est ignorée)
     let first = true, t = null;
     stopLogs = db.collection('logs').where('uid', '==', u.uid).onSnapshot(() => {
       if (first) { first = false; return; }
-      clearTimeout(t); t = setTimeout(() => { if (user && user.uid === u.uid) syncMine().catch(() => {}); }, 15000);
+      clearTimeout(t); t = setTimeout(() => { if (user && user.uid === u.uid) syncMine().catch(() => {}); }, 2500);
     }, () => {});
     // 2. administrateur : remet à jour les rangs de tous les membres (au plus toutes les 6 h)
     if (isAdmin) {
@@ -218,7 +218,11 @@ auth.onAuthStateChanged(u => {
 });
 
 /* ---------- page Classé ---------- */
+let rkStopFn = null;
+function rkStop() { if (rkStopFn) { try { rkStopFn(); } catch (e) {} rkStopFn = null; } }
+
 async function classePage() {
+  rkStop();
   app.innerHTML = `<div class="soc-top"><h1>${icon('trophy')}Classé</h1></div><div id="rkme"><div class="card rk-hero"><p class="mute" style="margin:0">Calcul de ton rang…</p></div></div>
     <div class="seg" id="rkt"><a href="#" data-t="all">Mondial</a><a href="#" data-t="abo">Amis</a></div><input id="rkq" type="search" placeholder="Rechercher un membre…" aria-label="Rechercher un membre" autocomplete="off"><div id="rkl"><p class="mute">Chargement…</p></div>
     ${isAdmin ? '<div class="card rk-adm"><b>Administration</b><p class="mute" style="margin:4px 0 10px">Remet à jour le rang de tous les membres à partir de toutes leurs séances, même ceux qui ne sont pas connectés.</p><button id="rkall" class="alt" style="width:100%">Recalculer tous les membres</button><p id="rkallr" class="mute" style="margin:8px 0 0" hidden></p></div>' : ''}
@@ -233,10 +237,11 @@ async function classePage() {
   try { res = await computeRating(user.uid); } catch (e) { $('#rkme').innerHTML = `<div class="card">Erreur : ${esc(e.message)}</div>`; return; }
   try { await rkLoad(true); await saveMine(res); try { localStorage.setItem('wg_rk_at_' + user.uid, String(Date.now())); } catch (e) {} }
   catch (e) { rulesErr = e && e.code === 'permission-denied'; RK.map[user.uid] = {...(RK.map[user.uid] || {}), uid: user.uid, rating: res.rating, tier: res.tier, sessions: res.sessions}; }
-  const [users, fol] = await Promise.all([allUsers(true), db.collection('follows').where('from', '==', user.uid).get().catch(() => ({docs: []}))]);
+  let [users, fol] = await Promise.all([allUsers(true), db.collection('follows').where('from', '==', user.uid).get().catch(() => ({docs: []}))]);
   const fset = new Set(fol.docs.map(d => d.data().to)); fset.add(user.uid);
-  const all = Object.values(RK.map).filter(r => r && r.tier > 0 && r.tier < TIERS.length && users[r.uid] && !users[r.uid].blocked)
+  const build = () => Object.values(RK.map).filter(r => r && r.tier > 0 && r.tier < TIERS.length && users[r.uid] && !users[r.uid].blocked)
     .map(r => ({...r, u: users[r.uid]})).sort((a, b) => b.rating - a.rating || (a.at || 0) - (b.at || 0));
+  let all = build();
   let tab = 'all', shown = 50;
   const list = () => all.filter(r => tab === 'all' || fset.has(r.uid));
 
@@ -299,6 +304,31 @@ async function classePage() {
   $('#rkt').querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); tab = a.dataset.t; shown = 50; drawList(); });
   $('#rkq').oninput = e => { q = e.target.value.trim().toLowerCase(); drawList(); };
   drawMe(); drawList();
+  if (!$('#rkl')) return;
+  /* temps réel : le classement et mon score se mettent à jour tout seuls (sans recharger la page) */
+  let firstR = true, firstL = true, tl = null;
+  const offR = RANKS().onSnapshot(async sn => {
+    if (firstR) { firstR = false; return; }
+    if (!$('#rkl')) return;
+    const m = {}; sn.docs.forEach(d => { m[d.id] = d.data(); }); RK.map = m; RK.t = Date.now();
+    if (Object.keys(m).some(id => !users[id])) { try { users = await allUsers(true); } catch (e) {} }
+    const mine = m[user.uid];
+    if (mine && Math.round(mine.rating) !== res.rating) { try { res = await computeRating(user.uid); } catch (e) {} }
+    if (!$('#rkl')) return;
+    all = build(); drawMe(); drawList();
+  }, () => {});
+  const offL = db.collection('logs').where('uid', '==', user.uid).onSnapshot(() => {
+    if (firstL) { firstL = false; return; }
+    clearTimeout(tl);
+    tl = setTimeout(async () => {
+      if (!$('#rkl')) return;
+      try { res = await computeRating(user.uid); await saveMine(res); } catch (e) {}
+      if (!$('#rkl')) return;
+      all = build(); drawMe(); drawList();
+    }, 1500);
+  }, () => {});
+  rkStopFn = () => { offR(); offL(); clearTimeout(tl); };
+  try { pageUnsub = rkStopFn; } catch (e) {}
   if ($('#rkall')) $('#rkall').onclick = async () => {
     const b = $('#rkall'), r = $('#rkallr'); b.disabled = true; b.textContent = 'Calcul en cours…';
     try { const n = await recomputeAll(); r.textContent = n + ' membre' + (n > 1 ? 's' : '') + ' mis à jour.'; r.hidden = false; await rkLoad(true); setTimeout(classePage, 1200); }
