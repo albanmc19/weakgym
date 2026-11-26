@@ -235,7 +235,7 @@ async function classePage() {
   catch (e) { rulesErr = e && e.code === 'permission-denied'; RK.map[user.uid] = {...(RK.map[user.uid] || {}), uid: user.uid, rating: res.rating, tier: res.tier, sessions: res.sessions}; }
   const [users, fol] = await Promise.all([allUsers(true), db.collection('follows').where('from', '==', user.uid).get().catch(() => ({docs: []}))]);
   const fset = new Set(fol.docs.map(d => d.data().to)); fset.add(user.uid);
-  const all = Object.values(RK.map).filter(r => r && r.tier > 0 && r.tier < TIERS.length && users[r.uid] && !users[r.uid].blocked && (r.uid === user.uid || isAdmin || users[r.uid].private !== true))
+  const all = Object.values(RK.map).filter(r => r && r.tier > 0 && r.tier < TIERS.length && users[r.uid] && !users[r.uid].blocked)
     .map(r => ({...r, u: users[r.uid]})).sort((a, b) => b.rating - a.rating || (a.at || 0) - (b.at || 0));
   let tab = 'all', shown = 50;
   const list = () => all.filter(r => tab === 'all' || fset.has(r.uid));
