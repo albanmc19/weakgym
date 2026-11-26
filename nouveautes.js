@@ -20,6 +20,23 @@
 const UPDATES = [
   {
     date: '2026-11-26',
+    title: 'Connexion quotidienne',
+    items: [
+      ['Accueil', 'Nouvelle carte « Connexion quotidienne » : récupère un bonus de WeakCoins une fois par jour. Plus tu te connectes plusieurs jours d’affilée, plus il est gros (de 5 à 30).'],
+      ['Badge', 'Au 7e jour d’affilée, tu gagnes le badge Assidu (une seule fois) avec 40 WeakCoins. Les semaines suivantes, le jour 7 te donne 100 WeakCoins à la place.'],
+      ['Boutique', 'Tes connexions apparaissent dans l’historique de tes WeakCoins.']
+    ]
+  },
+  {
+    date: '2026-11-26',
+    title: 'Spotify pour chacun',
+    items: [
+      ['Musique', 'Chaque membre peut maintenant connecter son propre Spotify avec son propre Client ID (guide pas à pas dans Musique). Fini le blocage à 5 comptes de l’app partagée.'],
+      ['Musique', 'Connexion plus fiable : les erreurs de Spotify s’affichent clairement, et une coupure réseau ne te déconnecte plus.']
+    ]
+  },
+  {
+    date: '2026-11-26',
     title: 'Classé plus juste, et instantané',
     items: [
       ['Classé', 'Tous les exercices rapportent maintenant des points, avec un coefficient adapté : un exercice où l’on charge lourd facilement (presse…) rapporte un peu moins par kilo qu’un exercice d’isolation (bras, épaules…).'],
