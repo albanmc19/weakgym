@@ -134,11 +134,13 @@ function rate(logs, byId) {
    ou clique sur « Recalculer », les rangs des membres absents sont remis à jour à partir de TOUTES leurs séances. */
 async function recomputeAll() {
   if (!isAdmin) return 0;
+  let step = 'lecture des séances (collections logs, sessions, mysessions)';
+  try {
   const [ls, ss, ps, users, old] = await Promise.all([db.collection('logs').get(), db.collection('sessions').get(), db.collection('mysessions').get(), allUsers(true), RANKS().get()]);
   const byId = {}; ss.docs.forEach(d => { byId[d.id] = d.data(); }); ps.docs.forEach(d => { byId[d.id] = d.data(); });
   const by = {}; ls.docs.forEach(d => { const l = d.data(); if (l && l.uid) (by[l.uid] || (by[l.uid] = [])).push(l); });
   const prev = {}; old.docs.forEach(d => { prev[d.id] = d.data(); });
-  let n = 0, bt = db.batch(), k = 0;
+  let n = 0, bt = db.batch(), k = 0; step = 'écriture des rangs (collection ranks)';
   for (const uid of Object.keys(users)) {
     if (users[uid].blocked) continue;
     const r = rate(by[uid] || [], byId), p = prev[uid];
@@ -150,6 +152,7 @@ async function recomputeAll() {
   if (k) await bt.commit();
   try { localStorage.setItem('wg_rk_all', String(Date.now())); } catch (e) {}
   return n;
+  } catch (e) { e.step = step; throw e; }
 }
 
 /* ---------- cache des rangs (pour les badges partout sur le site) ---------- */
@@ -299,7 +302,7 @@ async function classePage() {
   if ($('#rkall')) $('#rkall').onclick = async () => {
     const b = $('#rkall'), r = $('#rkallr'); b.disabled = true; b.textContent = 'Calcul en cours…';
     try { const n = await recomputeAll(); r.textContent = n + ' membre' + (n > 1 ? 's' : '') + ' mis à jour.'; r.hidden = false; await rkLoad(true); setTimeout(classePage, 1200); }
-    catch (e) { r.textContent = 'Erreur : ' + e.message + (e.code === 'permission-denied' ? ' — vérifie les règles Firestore (collection ranks, écriture admin).' : ''); r.hidden = false; b.disabled = false; b.textContent = 'Recalculer tous les membres'; }
+    catch (e) { r.textContent = 'Erreur pendant la ' + (e.step || 'opération') + ' : ' + e.message + (e.code === 'permission-denied' ? ' — publie la dernière version de firestore.rules.' : ''); r.hidden = false; b.disabled = false; b.textContent = 'Recalculer tous les membres'; }
   };
 }
 
