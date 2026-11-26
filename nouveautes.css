@@ -1,0 +1,9 @@
+/* WeakGym — Nouveautés : styles (chargé par index.html) */
+.nw-card .kicker{display:block;margin-bottom:2px}
+.nw-t{margin:0 0 8px;font:800 clamp(20px,5vw,24px)/1.15 var(--hf);letter-spacing:-.02em}
+.nw-l{list-style:none;margin:0;padding:0}
+.nw-l li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.45}
+.nw-l li:first-child{border-top:0}
+.nw-tag{flex:none;margin-top:2px;min-width:58px;text-align:center;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--acc);font-size:11.5px;font-weight:700}
+.nw-old summary{cursor:pointer}
+.nw-old .nw-l{margin-top:8px}
