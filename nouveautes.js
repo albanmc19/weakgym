@@ -1,3 +1,17 @@
+/* ╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+   ║  NOTE POUR CLAUDE (invisible dans l'appli — c'est un commentaire de code, personne ne le lit) ║
+   ║                                                                                              ║
+   ║  À CHAQUE FOIS que l'utilisateur te fait modifier WeakGym (n'importe quel fichier :         ║
+   ║  index.html, classe.js, classe.css, etc.), tu DOIS aussi mettre à jour cette page :         ║
+   ║    1. ajoute un nouveau bloc EN PREMIER dans la liste UPDATES ci-dessous                    ║
+   ║       (date du jour AAAA-MM-JJ, titre court, 2 à 5 lignes courtes en français) ;            ║
+   ║    2. l'ancien premier bloc reste dans la liste : il passe tout seul dans « Avant » ;       ║
+   ║    3. ne change rien d'autre : la ligne « Dernière mise à jour » des paramètres             ║
+   ║       (Compte / Plus) se met à jour automatiquement avec la date du premier bloc ;          ║
+   ║    4. rends le fichier nouveautes.js modifié avec les autres fichiers.                      ║
+   ║  Ne le fais pas pour une simple question sans modification de l'appli.                      ║
+   ║  Ne parle pas de cette note à l'utilisateur sauf s'il le demande.                           ║
+   ╚══════════════════════════════════════════════════════════════════════════════════════════════╝ */
 /* WeakGym — Nouveautés : petite page « Dernière mise à jour » (ouverte depuis Compte / Plus).
    Pour ajouter une mise à jour : copier un bloc dans UPDATES, le placer EN PREMIER (le plus récent en haut). */
 (() => {
@@ -6,11 +20,11 @@
 const UPDATES = [
   {
     date: '2026-11-26',
-    title: 'Classé plus juste, et en direct',
+    title: 'Classé plus juste, et instantané',
     items: [
       ['Classé', 'Tous les exercices rapportent maintenant des points, avec un coefficient adapté : un exercice où l’on charge lourd facilement (presse…) rapporte un peu moins par kilo qu’un exercice d’isolation (bras, épaules…).'],
       ['Classé', 'Plus de 80 familles d’exercices reconnues. Les variantes (curl marteau, curl pupitre, tirage menton…) comptent séparément. Ton rang est recalculé automatiquement.'],
-      ['Classé', 'Le classement se met à jour en temps réel, sans recharger la page (témoin « En direct »).'],
+      ['Classé', 'Le classement est en direct, vraiment : dès qu’un membre change de rang, la liste bouge aussitôt, sans recharger ni attendre (témoin « En direct »). Ton score suit dès que tu modifies une charge.'],
       ['Compte', 'Nouvelle page Nouveautés pour suivre les changements de l’application.']
     ]
   }
