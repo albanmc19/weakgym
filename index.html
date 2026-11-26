@@ -1709,7 +1709,7 @@ function addInstall() {
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if ((location.hash || '#/') === '#/') addInstall(); });
 addEventListener('appinstalled', () => { const i = $('.inst'); if (i) i.remove(); });
-if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {}));
 
 async function usersPage() {
   let list = [], stats = {}, tab = 'all';
@@ -3331,6 +3331,7 @@ const WGShare = (() => {
 <script src="boutique.js"></script>
 <script src="classe.js"></script>
 <script src="live.js"></script>
+<script src="update.js"></script>
 <script>
 /* Chronomètre facultatif : bouton ⏱ sur les séances. Il continue même si tu quittes la page ou l'appli. */
 (() => {
