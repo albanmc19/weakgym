@@ -67,7 +67,7 @@ const BADGES = {
   founder: {label: 'Fondateur', color: 'var(--warn)', mark: '<path fill="#fff" d="M12 7l4 5-4 5-4-5z"/>'}
 };
 const wgBadges = u => (u && Array.isArray(u.badges) ? u.badges : []).filter(k => BADGES[k]).slice(0, 3).map(k =>
-  `<span class="vb" style="color:${BADGES[k].color}" role="img" aria-label="${BADGES[k].label}" title="${BADGES[k].label}"><svg viewBox="0 0 24 24" aria-hidden="true">${SEAL}${BADGES[k].mark}</svg></span>`).join('') + (window.wcBadgesHtml ? wcBadgesHtml(u) : '');
+  `<span class="vb" style="color:${BADGES[k].color}" role="img" aria-label="${BADGES[k].label}" title="${BADGES[k].label}"><svg viewBox="0 0 24 24" aria-hidden="true">${SEAL}${BADGES[k].mark}</svg></span>`).join('') + (window.wcBadgesHtml ? wcBadgesHtml(u) : '') + (window.rkBadgeHtml ? rkBadgeHtml(u) : '');
 function badgeModal(u, done) {
   const cur = new Set(Array.isArray(u.badges) ? u.badges : []);
   const m = sheet(`<h2 style="margin-top:0">Badges de ${esc(u.name || 'ce membre')}</h2>
@@ -125,7 +125,7 @@ async function countBy(col, id) {
   } catch (e) { return null; }
 }
 async function newState() {
-  const [users, mine] = await Promise.all([allUsers(true), LIKES().where('uid', '==', user.uid).get().catch(() => ({docs: []}))]);
+  const [users, mine] = await Promise.all([allUsers(true), LIKES().where('uid', '==', user.uid).get().catch(() => ({docs: []})), window.rkLoad ? rkLoad() : null]);
   return {users, me: new Set(mine.docs.map(d => d.data().post)), counts: {}, cc: {}};
 }
 async function loadCounts(st, list) {
@@ -332,7 +332,7 @@ async function socialPage() {
 /* ---------- Rechercher des membres ---------- */
 async function membersPage() {
   app.innerHTML = '<p class="mute">Chargement…</p>';
-  const [us, mine] = await Promise.all([allUsers(true), db.collection('follows').where('from', '==', user.uid).get()]);
+  const [us, mine] = await Promise.all([allUsers(true), db.collection('follows').where('from', '==', user.uid).get(), window.rkLoad ? rkLoad() : null]);
   let fol = new Set(mine.docs.map(d => d.data().to)), q = '';
   const list = Object.values(us).filter(u => !u.blocked && u.uid !== user.uid).sort((a, b) => (isOnline(b.seen) ? 1 : 0) - (isOnline(a.seen) ? 1 : 0) || (b.seen || 0) - (a.seen || 0));
   app.innerHTML = `<p style="margin:0"><a class="link" href="#/social" style="padding-left:0">← Social</a></p><h1 style="margin-top:0">Rechercher</h1>
@@ -382,6 +382,7 @@ async function profilePage(uid) {
     <div class="pr">${av(u, 'xl')}<div class="pr-s">${stat('posts', posts.length, 'Publications')}${stat('followers', followers.length, 'Abonnés')}${stat('following', following.length, 'Abonnements')}</div></div>
     <h1 class="pr-n">${esc(u.name || 'Sans nom')}${wgBadges(u)}</h1>
     <p class="pr-m"><span class="${isOnline(u.seen) || self ? 'on-t' : ''}">${lastSeen(u.seen, self)}</span>${showJoined ? ` · Membre depuis ${esc(joined)}${self && u.hideJoined ? ' (masqué)' : ''}` : ''}${!self && following.some(x => x.uid === user.uid) ? ' · <b>Te suit</b>' : ''}${u.private ? (self ? ' · Profil privé' : ' · Profil privé (visible car tu es admin)') : ''}</p>
+    ${window.rkProfileChip ? rkProfileChip(uid) : ''}
     ${u.bio ? `<p class="bio pr-b">${esc(u.bio)}</p>` : '<div style="height:10px"></div>'}
     <div class="pr-act">${self ? '<button id="ed" class="alt">Modifier le profil</button><button id="np">Publier</button>' : fbtn(uid, iFollow).replace('class="fb', 'id="mainf" style="min-height:46px;font-size:16px" class="fb')}${isAdmin ? '<button id="bg" class="alt">Badges</button>' : ''}</div>
     ${self ? `<div class="card" id="edbox" hidden>
