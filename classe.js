@@ -101,7 +101,10 @@ async function computeRating(uid) {
     db.collection('mysessions').where('uid', '==', uid).get().catch(() => ({docs: []}))
   ]);
   const byId = {}; ss.docs.forEach(d => { byId[d.id] = d.data(); }); ps.docs.forEach(d => { byId[d.id] = d.data(); });
-  const fam = {}; let vol = 0, sess = 0;
+  return rate(logs, byId);
+}
+function rate(logs, byId) {
+  const fam = {}; let vol = 0, sess = 0, since = '';
   logs.forEach(l => {
     const s = byId[l.sessionId]; if (!s || !Array.isArray(s.exercises)) return;
     let had = false;
@@ -118,12 +121,35 @@ async function computeRating(uid) {
       const f = fam[id] || (fam[id] = {id, coef, best: 0, name: e.name, kg: 0, reps: 0});
       if (best > f.best) { f.best = best; f.name = e.name; f.kg = top; f.reps = reps; }
     });
-    if (had) sess++;
+    if (had) { sess++; if (s.date && (!since || s.date < since)) since = s.date; }
   });
   const top = Object.values(fam).map(f => ({name: f.name, kg: f.kg, reps: f.reps, coef: f.coef, pts: f.coef * f.best})).sort((a, b) => b.pts - a.pts);
   const strength = top.slice(0, TOP_N).reduce((a, f) => a + f.pts, 0), volume = Math.min(VOL_CAP, vol / 1000);
   const rating = Math.round(strength + volume);
-  return {rating, strength: Math.round(strength), volume: Math.round(volume), sessions: sess, top: top.slice(0, TOP_N), tier: tierOf(rating, sess)};
+  return {since, rating, strength: Math.round(strength), volume: Math.round(volume), sessions: sess, top: top.slice(0, TOP_N), tier: tierOf(rating, sess)};
+}
+
+/* ---------- recalcul pour TOUS les membres (administrateur) ----------
+   Seul l'admin peut lire les séances de tout le monde (règles Firestore). Quand il ouvre l'appli (au plus toutes les 6 h)
+   ou clique sur « Recalculer », les rangs des membres absents sont remis à jour à partir de TOUTES leurs séances. */
+async function recomputeAll() {
+  if (!isAdmin) return 0;
+  const [ls, ss, ps, users, old] = await Promise.all([db.collection('logs').get(), db.collection('sessions').get(), db.collection('mysessions').get(), allUsers(true), RANKS().get()]);
+  const byId = {}; ss.docs.forEach(d => { byId[d.id] = d.data(); }); ps.docs.forEach(d => { byId[d.id] = d.data(); });
+  const by = {}; ls.docs.forEach(d => { const l = d.data(); if (l && l.uid) (by[l.uid] || (by[l.uid] = [])).push(l); });
+  const prev = {}; old.docs.forEach(d => { prev[d.id] = d.data(); });
+  let n = 0, bt = db.batch(), k = 0;
+  for (const uid of Object.keys(users)) {
+    if (users[uid].blocked) continue;
+    const r = rate(by[uid] || [], byId), p = prev[uid];
+    if (!p && r.rating === 0) continue;
+    if (p && Math.round(p.rating) === r.rating && p.tier === r.tier && p.sessions === r.sessions) continue;
+    bt.set(RANKS().doc(uid), {uid, rating: r.rating, tier: r.tier, sessions: r.sessions, at: Date.now()}, {merge: true}); n++;
+    if (++k >= 400) { await bt.commit(); bt = db.batch(); k = 0; }
+  }
+  if (k) await bt.commit();
+  try { localStorage.setItem('wg_rk_all', String(Date.now())); } catch (e) {}
+  return n;
 }
 
 /* ---------- cache des rangs (pour les badges partout sur le site) ---------- */
@@ -135,9 +161,20 @@ function rkLoad(force) {
   return RK.p;
 }
 const rkBadgeHtml = u => { const r = u && RK.map[u.uid]; return !RK.mute && r && r.show === true && r.tier > 0 && r.tier < TIERS.length ? badgeHtml(r.tier) : ''; };
+const worldList = () => Object.values(RK.map).filter(r => r && r.tier > 0 && r.tier < TIERS.length).sort((a, b) => b.rating - a.rating || (a.at || 0) - (b.at || 0));
 function rkProfileChip(uid) {
-  const r = RK.map[uid]; if (!r || r.show !== true || !(r.tier > 0) || r.tier >= TIERS.length) return '';
-  return `<a class="rk-chip t${r.tier}" href="#/classe">${badgeSvg(r.tier)}<b>${TIERS[r.tier].n}</b><span>${Math.round(r.rating)} pts</span></a>`;
+  const r = RK.map[uid], self = user && uid === user.uid;
+  if (!r || !(r.tier > 0) || r.tier >= TIERS.length || (r.show !== true && !self)) return '';
+  const T = TIERS[r.tier], nx = TIERS[r.tier + 1], wl = worldList(), pos = wl.findIndex(x => x.uid === uid) + 1;
+  const pct = nx ? Math.max(0, Math.min(100, (r.rating - T.min) / (nx.min - T.min) * 100)) : 100;
+  return `<a class="rk-pc t${r.tier}" href="#/classe" aria-label="Rang ${T.n}, voir le classement">
+    <span class="rk-pcb ${r.tier === 7 ? 'rk-unreal' : ''}">${badgeSvg(r.tier)}</span>
+    <span class="rk-pci"><small>Rang</small><b>${T.n}</b>
+      <span class="rk-pcs"><b>${Math.round(r.rating)}</b> pts${pos ? ` · <b>#${pos}</b> mondial` : ''}</span>
+      <span class="rk-bar"><i style="width:${pct}%"></i></span>
+      <small class="rk-pcn">${nx ? `${nx.min - Math.round(r.rating)} pts avant ${nx.n}` : 'Rang maximum'}</small></span>
+    <span class="rk-pcg" aria-hidden="true">›</span>
+    ${self && r.show !== true ? '<em>Masqué pour les autres</em>' : ''}</a>`;
 }
 
 /* enregistre mon rating (jamais plus d'une fois toutes les 30 min en tâche de fond) */
@@ -154,22 +191,36 @@ async function syncMine() {
   await saveMine(res);
   try { localStorage.setItem('wg_rk_at_' + user.uid, String(Date.now())); } catch (e) {}
 }
+let stopLogs = null;
 auth.onAuthStateChanged(u => {
+  if (stopLogs) { stopLogs(); stopLogs = null; }
   if (!u) return;
   setTimeout(async () => {
     if (!user || user.uid !== u.uid) return;
+    // 1. mon rang : au démarrage (au plus toutes les 10 min) …
     let last = 0; try { last = +localStorage.getItem('wg_rk_at_' + u.uid) || 0; } catch (e) {}
-    if (Date.now() - last < 30 * 60000) { rkLoad(); return; }
-    try { await syncMine(); } catch (e) {}
+    if (Date.now() - last < 10 * 60000) rkLoad(); else { try { await syncMine(); } catch (e) {} }
+    // … et dès que je modifie une séance (mise à jour 15 s plus tard, la première lecture est ignorée)
+    let first = true, t = null;
+    stopLogs = db.collection('logs').where('uid', '==', u.uid).onSnapshot(() => {
+      if (first) { first = false; return; }
+      clearTimeout(t); t = setTimeout(() => { if (user && user.uid === u.uid) syncMine().catch(() => {}); }, 15000);
+    }, () => {});
+    // 2. administrateur : remet à jour les rangs de tous les membres (au plus toutes les 6 h)
+    if (isAdmin) {
+      let all = 0; try { all = +localStorage.getItem('wg_rk_all') || 0; } catch (e) {}
+      if (Date.now() - all > 6 * 3600000) { try { await recomputeAll(); } catch (e) { console.warn('Recalcul des rangs', e); } }
+    }
   }, 8000);
 });
 
 /* ---------- page Classé ---------- */
 async function classePage() {
   app.innerHTML = `<div class="soc-top"><h1>${icon('trophy')}Classé</h1></div><div id="rkme"><div class="card rk-hero"><p class="mute" style="margin:0">Calcul de ton rang…</p></div></div>
-    <div class="seg" id="rkt"><a href="#" data-t="all">Général</a><a href="#" data-t="abo">Abonnements</a></div><div id="rkl"><p class="mute">Chargement…</p></div>
+    <div class="seg" id="rkt"><a href="#" data-t="all">Mondial</a><a href="#" data-t="abo">Amis</a></div><input id="rkq" type="search" placeholder="Rechercher un membre…" aria-label="Rechercher un membre" autocomplete="off"><div id="rkl"><p class="mute">Chargement…</p></div>
+    ${isAdmin ? '<div class="card rk-adm"><b>Administration</b><p class="mute" style="margin:4px 0 10px">Remet à jour le rang de tous les membres à partir de toutes leurs séances, même ceux qui ne sont pas connectés.</p><button id="rkall" class="alt" style="width:100%">Recalculer tous les membres</button><p id="rkallr" class="mute" style="margin:8px 0 0" hidden></p></div>' : ''}
     <details class="card rk-how"><summary>Comment fonctionne le classement ?</summary>
-      <p>Ton <b>rating</b> se calcule avec les charges que tu notes dans tes séances (exercices en kg). Il se met à jour tout seul à chaque ouverture du classement.</p>
+      <p>Ton <b>rating</b> se calcule avec <b>toutes</b> les charges que tu as notées dans tes séances, anciennes comprises (exercices en kg). Il se met à jour tout seul à chaque ouverture du classement.</p>
       <p><b>Force</b> : pour chacun de tes meilleurs exercices, on prend ta meilleure charge (augmentée selon le nombre de reps) multipliée par un coefficient. Un exercice où l’on charge facilement (presse, par exemple) rapporte moins de points par kilo qu’un exercice difficile (développé militaire, curl, élévations…). Les exercices aux haltères sont un peu plus valorisés, car la charge est par main.</p>
       <p><b>Volume</b> : tout ce que tu soulèves au fil des séances ajoute des points (plafonné), pour récompenser la régularité.</p>
       <p>Il faut au moins ${PLACEMENT} séances avec des charges pour être classé. Les exercices en minutes et le cardio ne comptent pas. Seules tes charges comptent, pas ton poids de corps.</p>
@@ -198,7 +249,7 @@ async function classePage() {
         <div class="rk-info"><span class="kicker">Mon rang</span><h2>${T.n}</h2>
           <p class="rk-pts"><b>${res.rating}</b> pts${t && pos ? ` · <span>#${pos} sur ${all.length}</span>` : ''}</p>
           <div class="rk-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="width:${pct}%"></i></div>
-          <p class="mute rk-sub">${sub}</p></div>
+          <p class="mute rk-sub">${sub}</p>${res.since ? `<p class="mute rk-sub" style="margin-top:4px">Calculé sur ${res.sessions} séance${res.sessions > 1 ? 's' : ''} depuis le ${esc(new Date(res.since + 'T12:00').toLocaleDateString(WG.loc, {day: 'numeric', month: 'long', year: 'numeric'}))}.</p>` : ''}</div>
         <label class="chk rk-show" ${t ? '' : 'style="opacity:.55"'}><input id="rksh" type="checkbox" ${show ? 'checked' : ''} ${t ? '' : 'disabled'}> ${t ? 'Afficher mon badge sur mon profil' : 'Badge disponible à partir de Bronze'}</label>
       </div>
       <div class="rk-lad">${TIERS.slice(1).map((x, i) => `<div class="${i + 1 === t ? 'cur' : i + 1 < t ? 'got' : ''}"><span class="rk-bg">${badgeSvg(i + 1)}</span><b>${x.n}</b><small>${x.min} pts</small></div>`).join('')}</div>
@@ -214,26 +265,42 @@ async function classePage() {
     };
   };
 
+  const link = r => '#/profil' + (r.uid === user.uid ? '' : '/' + esc(r.uid));
   const row = (r, i) => {
     RK.mute = true; const b = window.wgBadges ? wgBadges(r.u) : ''; RK.mute = false;
     const me = r.uid === user.uid;
-    return `<a class="card item rk-row ${me ? 'me' : ''}" href="#/profil${me ? '' : '/' + esc(r.uid)}"><span class="rk-n n${i + 1}">${i + 1}</span><span class="mem">${av(r.u)}<span><b>${esc(r.u.name || 'Sans nom')}${b}${me ? ' (moi)' : ''}</b><span class="mute">${TIERS[r.tier].n}</span></span></span><span class="rk-sc"><span class="rk-bg ${r.tier === 7 ? 'rk-unreal' : ''}">${badgeSvg(r.tier)}</span><b>${Math.round(r.rating)}</b></span></a>`;
+    return `<a class="card item rk-row t${r.tier} ${me ? 'me' : ''}" href="${link(r)}"><span class="rk-n">${i + 1}</span><span class="mem"><span class="rk-ring">${av(r.u)}</span><span><b>${esc(r.u.name || 'Sans nom')}${b}${me ? ' (moi)' : ''}</b><span class="rk-tn">${TIERS[r.tier].n}</span></span></span><span class="rk-sc"><span class="rk-bg ${r.tier === 7 ? 'rk-unreal' : ''}">${badgeSvg(r.tier)}</span><b>${Math.round(r.rating)}<small>pts</small></b></span></a>`;
   };
-  const pod = (r, i) => `<a class="rk-p p${i + 1}" href="#/profil${r.uid === user.uid ? '' : '/' + esc(r.uid)}"><span class="rk-pm">${av(r.u, 'xl')}<i>${i + 1}</i></span><b>${esc((r.u.name || 'Sans nom').split(' ')[0])}</b><span class="rk-bg ${r.tier === 7 ? 'rk-unreal' : ''}">${badgeSvg(r.tier)}</span><small>${Math.round(r.rating)} pts</small></a>`;
+  const pod = (r, i) => `<a class="rk-p p${i + 1} t${r.tier}" href="${link(r)}">
+    ${i === 0 ? '<svg class="rk-crown" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 18l-1.2-9.5 4.7 4L12 6l4 6.5 4.7-4L19.5 18z" fill="#f5c518" stroke="#b8860b" stroke-width="1" stroke-linejoin="round"/></svg>' : ''}
+    <span class="rk-pm"><span class="rk-ring">${av(r.u, 'xl')}</span><i>${i + 1}</i></span><b>${esc((r.u.name || 'Sans nom').split(' ')[0])}</b>
+    <span class="rk-bg ${r.tier === 7 ? 'rk-unreal' : ''}">${badgeSvg(r.tier)}</span><span class="rk-pp">${Math.round(r.rating)}<small>pts</small></span><span class="rk-col"></span></a>`;
+  let q = '';
   const drawList = () => {
     $('#rkt').querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.t === tab));
-    const l = list(), box = $('#rkl');
-    if (!l.length) { box.innerHTML = `<div class="card pg-e mute">${tab === 'abo' ? 'Personne parmi tes abonnements n’est encore classé.' : 'Personne n’est encore classé. Note tes charges dans tes séances pour ouvrir le bal !'}</div>`; return; }
-    const top3 = l.length >= 3 ? l.slice(0, 3) : [];
-    box.innerHTML = `${top3.length ? `<div class="rk-pod">${[1, 0, 2].map(i => pod(top3[i], i)).join('')}</div>` : ''}
-      ${l.slice(top3.length ? 3 : 0, shown).map((r, i) => row(r, i + (top3.length ? 3 : 0))).join('')}
+    const l = list(), box = $('#rkl'), world = tab === 'all';
+    if (!l.length) { box.innerHTML = `<div class="card pg-e mute">${world ? 'Personne n’est encore classé. Note tes charges dans tes séances pour ouvrir le bal !' : 'Aucun de tes amis n’est encore classé. Abonne-toi à des membres avec la loupe de l’onglet Social.'}</div>`; return; }
+    const head = `<p class="rk-cnt mute">${world ? `${l.length} classé${l.length > 1 ? 's' : ''} dans le monde` : `${l.length} classé${l.length > 1 ? 's' : ''} parmi tes amis`}</p>`;
+    if (q) {
+      const f = l.map((r, i) => ({r, i})).filter(x => (x.r.u.name || '').toLowerCase().includes(q));
+      box.innerHTML = f.length ? f.map(x => row(x.r, x.i)).join('') : '<p class="mute">Aucun membre classé avec ce nom.</p>'; return;
+    }
+    const top3 = l.length >= 3 ? l.slice(0, 3) : [], from = top3.length ? 3 : 0;
+    box.innerHTML = `${head}${top3.length ? `<div class="rk-pod">${[1, 0, 2].map(i => pod(top3[i], i)).join('')}</div>` : ''}
+      ${l.slice(from, shown).map((r, i) => row(r, i + from)).join('')}
       ${l.length > shown ? '<p><button class="alt" id="rkmore" style="width:100%">Voir plus</button></p>' : ''}
-      ${all.some(r => r.uid === user.uid) && !l.slice(0, shown).some(r => r.uid === user.uid) && l.some(r => r.uid === user.uid) ? '<p><button class="alt" id="rkme2" style="width:100%">Voir ma position</button></p>' : ''}`;
+      ${l.some(r => r.uid === user.uid) && !l.slice(0, shown).some(r => r.uid === user.uid) ? '<p><button class="alt" id="rkme2" style="width:100%">Voir ma position</button></p>' : ''}`;
     if ($('#rkmore')) $('#rkmore').onclick = () => { shown += 50; drawList(); };
     if ($('#rkme2')) $('#rkme2').onclick = () => { shown = l.length; drawList(); const m = box.querySelector('.rk-row.me'); if (m) m.scrollIntoView({behavior: 'smooth', block: 'center'}); };
   };
   $('#rkt').querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); tab = a.dataset.t; shown = 50; drawList(); });
+  $('#rkq').oninput = e => { q = e.target.value.trim().toLowerCase(); drawList(); };
   drawMe(); drawList();
+  if ($('#rkall')) $('#rkall').onclick = async () => {
+    const b = $('#rkall'), r = $('#rkallr'); b.disabled = true; b.textContent = 'Calcul en cours…';
+    try { const n = await recomputeAll(); r.textContent = n + ' membre' + (n > 1 ? 's' : '') + ' mis à jour.'; r.hidden = false; await rkLoad(true); setTimeout(classePage, 1200); }
+    catch (e) { r.textContent = 'Erreur : ' + e.message + (e.code === 'permission-denied' ? ' — vérifie les règles Firestore (collection ranks, écriture admin).' : ''); r.hidden = false; b.disabled = false; b.textContent = 'Recalculer tous les membres'; }
+  };
 }
 
 window.rkLoad = rkLoad;
