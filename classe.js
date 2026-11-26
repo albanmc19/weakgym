@@ -26,6 +26,7 @@ const TIERS = [
 const PLACEMENT = 3;      // séances avec charges nécessaires avant d'être classé
 const MAXKG = 500;        // une charge au-dessus est ignorée (faute de frappe)
 const VOL_CAP = 1000;     // points maximum apportés par le volume total
+const RATING_VER = 2;     // à augmenter quand le barème change : tout le monde est alors recalculé aussitôt
 const TOP_N = 14;         // nombre d'exercices (familles) comptés pour la force
 
 const tierOf = (rating, sessions) => {
@@ -64,30 +65,95 @@ const badgeHtml = (t, extra = '') => t > 0 ? `<span class="vb rkb ${t === 7 ? 'r
    Plus il est « dur » (développé militaire, élévations…), plus chaque kilo est valorisé.
    Un exercice est compté une seule fois par famille (on garde le meilleur), pour éviter de gonfler son score avec des variantes. */
 const FAMS = [
-  ['legpress', /presse|leg press|hack/, .28],
-  ['calf', /mollet|calf/, .45],
-  ['dl', /souleve|deadlift|\brdl\b|roumain|romanian|good morning/, .75],
-  ['hip', /hip thrust|pont fessier|glute bridge/, .6],
-  ['squat', /squat/, .8],
-  ['lunge', /fente|lunge|bulgare/, 1.1],
-  ['machine', /leg extension|leg curl|ischio|extension (des )?(jambes|quadriceps|cuisses)|curl (jambes|ischio|allonge|assis)|adducteur|abducteur|pec deck|butterfly|pec fly|ecarte/, .55],
-  ['ohp', /militaire|overhead|shoulder press|developpe (epaule|assis|nuque)|arnold|\bohp\b/, 1.7],
-  ['incline', /developpe.*incline|incline.*(press|developpe)/, 1.1],
-  ['bench', /developpe|bench|chest press|\bdips?\b/, 1.0],
-  ['pullup', /traction|pull up|chin up/, 1.2],
-  ['pulldown', /tirage (vertical|poitrine|nuque)|pulldown|lat pull/, .95],
-  ['row', /rowing|tirage|\brow\b|pendlay|t bar/, 1.0],
-  ['lateral', /elevation|oiseau|reverse fly|face pull|lateral raise|rear delt/, 3.0],
-  ['triceps', /triceps|barre au front|skull|pushdown|kickback|french|extension/, 1.9],
-  ['curl', /curl|biceps|marteau|hammer/, 2.2],
+  /* — machines guidées « poussée » (avant les développés génériques) — */
+  ['chestmach', /chest press|presse (a )?(pec|pectoraux|poitrine)|developpe (machine|convergent)|machine (a )?(pec|pectoraux|developpe)/, .85],
+  ['shouldmach', /presse (a )?epaules?|machine (a )?(epaules?|shoulder)|shoulder press machine/, 1.2],
+  /* — haltérophilie / explosif — */
+  ['olympic', /arrache|snatch|epaule jete|clean|jerk|power clean|hang clean/, 1.0],
+  ['thruster', /thruster/, 1.2],
+  ['swing', /swing/, 1.4],
+  ['sled', /traineau|sled|prowler/, .5],
+  ['farmer', /farmer|marche du fermier|marche fermier/, .7],
+  /* — jambes — */
+  ['calfseat', /mollets? assis|calf raise assis|seated calf|soleaire/, .5],
+  ['calf', /mollet|calf|donkey/, .45],
+  ['hack', /hack|pendulum|belt squat/, .35],
+  ['legpress', /presse|leg press/, .28],
+  ['tibial', /tibial/, 1.5],
+  ['rackpull', /rack pull|trap bar|hex bar|souleve.*(jambes tendues|sumo)|stiff leg/, .75],
+  ['dl', /souleve|deadlift|\brdl\b|roumain|romanian/, .75],
+  ['gm', /good morning/, 1.0],
+  ['back', /hyperextension|extension lombaire|lombaires?|banc lombaire|back extension|reverse hyper/, 1.2],
+  ['hip', /hip thrust|poussee de hanches|pont fessier|pont de hanches|glute bridge|pont\b/, .6],
+  ['glutemach', /kickback (fessier|poulie|machine)|glute (kickback|drive|machine)|fessier|extension de hanche|hip extension/, .6],
+  ['abductor', /abducteur|hip abduction|abduction/, .5],
+  ['adductor', /adducteur|hip adduction|adduction/, .5],
+  ['legcurl', /leg curl|curl (jambes?|ischio|allonge|assis|couche)|ischio|nordic/, .55],
+  ['legext', /leg extension|extension (de |des )?(genoux?|jambes?|quadriceps|cuisses)|quadriceps/, .55],
+  ['lunge', /fente|lunge|bulgare|split squat|step up|montees? sur banc/, 1.1],
+  ['goblet', /gobelet|goblet/, 1.5],
+  ['sumo', /sumo/, .8],
+  ['fsquat', /front squat|squat avant|zercher/, .85],
+  ['squat', /squat|smith|pistol/, .8],
+  /* — épaules — */
+  ['ohp', /militaire|overhead press|shoulder press|developpe (epaules?|assis|nuque|debout)|\bohp\b|push press/, 1.7],
+  ['arnold', /arnold/, 2.6],
+  ['landmine', /landmine/, 1.3],
+  ['facepull', /face pull|tirage (au )?visage/, 2.0],
+  ['reardelt', /oiseau|reverse fly|reverse pec|rear delt|deltoides? posterieur|elevations? (posterieures?|arriere)/, 3.0],
+  ['upright', /tirage menton|upright row/, 1.6],
+  ['front', /elevations? frontales?|front raise|frontale/, 2.4],
+  /* — pectoraux — */
+  ['incline', /^(?!.*curl)(developpe.*incline|incline.*(press|developpe|bench|halter|dumbbell)|\bincline\b)/, 1.1],
+  ['decline', /decline/, 1.0],
+  ['cgbp', /developpe couche (prise )?serre|close grip bench|prise serree.*developpe/, 1.0],
+  ['pecfly', /pec fly|pec deck|butterfly|papillon|ecarte|crossover|cable fly|vis a vis|fly\b/, .55],
+  ['dips', /\bdips?\b(?! banc)/, 1.0],
+  ['benchdips', /dips? (sur )?banc|bench dips?/, .8],
+  ['pushup', /pompe|push up/, 1.0],
+  ['pullover', /pull ?over/, 1.1],
+  ['bench', /developpe|bench|floor press/, 1.0],
+  /* — dos — */
+  ['assist', /assist/, .25],
+  ['pullup', /traction|pull up|chin up|muscle up/, 1.2],
+  ['straight', /bras tendus|straight arm/, 1.5],
+  ['pulldown', /tirage (vertical|poitrine|nuque|poulie haute)|pulldown|lat pull|tirage .*prise (large|serree|neutre|supination)/, .95],
+  ['tbar', /t bar|barre en t/, .9],
+  ['row', /rowing|tirage|\brow\b|pendlay|seal row|meadows|yates/, 1.0],
   ['shrug', /shrug|haussement/, .6],
-  ['abs', /crunch|abdo|releve de jambes|releve de genoux/, .9]
+  /* — bras — */
+  ['wristext', /extension (de )?poignets?|reverse wrist|poignets? (en )?(pronation|inverse)/, 1.6],
+  ['wrist', /poignet|wrist|avant bras|forearm/, 1.6],
+  ['hammer', /marteau|hammer/, 3.0],
+  ['concentration', /concentre|concentration|zottman/, 3.2],
+  ['inclcurl', /curl.*incline|incline.*curl/, 3.0],
+  ['preacher', /pupitre|larry scott|preacher|spider/, 2.4],
+  ['revcurl', /curl inverse|reverse curl/, 2.6],
+  ['cablecurl', /curl (a la )?poulie|cable curl|curl (poulie|basse)/, 2.0],
+  ['curl', /curl|biceps/, 2.2],
+  ['kickback', /kickback/, 3.5],
+  ['tricmach', /(triceps|dips?) machine|machine (a )?(triceps|dips?)/, 1.3],
+  ['tricover', /extension (au dessus|overhead|derriere)|triceps overhead|overhead triceps|nuque.*triceps|triceps.*nuque/, 2.2],
+  ['skull', /barre au front|skull|french|extension (couchee|allongee)|jm press/, 1.7],
+  ['triceps', /triceps|pushdown|extension|barre en v/, 1.9],
+  /* — tronc — */
+  ['legraise', /releves? de (jambes|genoux)|leg raise|knee raise|elevations? (de )?(jambes|genoux)|toes to bar|\bt2b\b/, 1.2],
+  ['wheel', /roue abdominale|ab wheel|roulette/, 1.2],
+  ['cablecrunch', /crunch (a la )?(poulie|cable|machine)|cable crunch|abdo(minaux)? (machine|poulie)/, 1.2],
+  ['crunch', /crunch|abdo|sit up|releve de buste/, .9],
+  ['twist', /russian|twist|rotation|oblique|woodchop|bucheron|pallof|inclinaison laterale|side bend|flexion laterale/, 1.3],
+  ['plank', /gainage|planche|plank|hollow|dead bug/, 1.5],
+  /* — élévations latérales (après tout ce qui commence par « élévation ») — */
+  ['lateral', /elevation|lateral|side raise/, 3.0],
+  ['neck', /\bcou\b|neck/, 2.5]
 ];
 const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+/* Exercice absent de la liste : on regarde s'il se fait à la machine / à la poulie (charge facile → coef réduit), sinon coef neutre. */
+const MACH = /machine|poulie|cable|guidee|convergent|selectorise/;
 function famOf(name) {
-  const n = norm(name), dumb = /halter|dumbbell|\bdb\b/.test(n), m = dumb ? 1.6 : 1;   // haltères : charge par main, donc plus légère
+  const n = norm(name), dumb = /halter|dumbbell|\bdb\b|un bras|1 bras|unilateral|alterne|kettlebell|\bkb\b/.test(n), m = dumb ? 1.6 : 1;   // haltères / un bras : charge par main, donc plus légère
   for (const [id, re, c] of FAMS) if (re.test(n)) return {id: id + (dumb ? '-db' : ''), coef: c * m};
-  return {id: 'x:' + n, coef: m};
+  return {id: 'x:' + n, coef: (MACH.test(n) ? .7 : 1) * m};
 }
 
 /* ---------- calcul du rating ----------
@@ -150,14 +216,29 @@ async function recomputeAll() {
     if (++k >= 400) { await bt.commit(); bt = db.batch(); k = 0; }
   }
   if (k) await bt.commit();
-  try { localStorage.setItem('wg_rk_all', String(Date.now())); } catch (e) {}
+  try { localStorage.setItem('wg_rk_all', String(Date.now())); localStorage.setItem('wg_rk_allver', String(RATING_VER)); } catch (e) {}
   return n;
   } catch (e) { e.step = step; throw e; }
 }
 
-/* ---------- cache des rangs (pour les badges partout sur le site) ---------- */
+/* ---------- cache des rangs (pour les badges partout sur le site) ----------
+   Écoute PERMANENTE de la collection « ranks » tant que l'utilisateur est connecté : chaque changement de rang
+   (de n'importe quel membre) arrive en direct, sans délai ni relecture. Les pages s'abonnent via RKB. */
 const RK = {map: {}, t: 0, p: null, mute: false};
+const RKB = {subs: new Set(), on(f) { this.subs.add(f); return () => this.subs.delete(f); }, emit(t, d) { this.subs.forEach(f => { try { f(t, d); } catch (e) {} }); }};
+let rkOff = null, rkRetry = null;
+function rkStart() {
+  if (rkOff) return;
+  rkOff = RANKS().onSnapshot(sn => {
+    const m = {}; sn.docs.forEach(d => { m[d.id] = d.data(); });
+    RK.map = m; RK.t = Date.now(); RK.p = Promise.resolve(m);
+    RKB.emit('map', m);
+    try { window.dispatchEvent(new CustomEvent('rk:update')); } catch (e) {}
+  }, () => { rkOff = null; clearTimeout(rkRetry); rkRetry = setTimeout(() => { if (user) rkStart(); }, 3000); });   // écoute coupée : on la relance tout de suite
+}
+function rkHalt() { if (rkOff) { try { rkOff(); } catch (e) {} rkOff = null; } clearTimeout(rkRetry); RK.map = {}; RK.p = null; }
 function rkLoad(force) {
+  if (rkOff && RK.p && !force) return RK.p;   // écoute en direct déjà active : la carte est à jour
   if (!force && RK.p && Date.now() - RK.t < 60000) return RK.p;
   RK.t = Date.now();
   RK.p = RANKS().get().then(s => { const m = {}; s.docs.forEach(d => { m[d.id] = d.data(); }); RK.map = m; return m; }).catch(() => RK.map);
@@ -192,27 +273,33 @@ async function syncMine() {
   if (!user) return;
   const res = await computeRating(user.uid);
   await saveMine(res);
-  try { localStorage.setItem('wg_rk_at_' + user.uid, String(Date.now())); } catch (e) {}
+  try { localStorage.setItem('wg_rk_at_' + user.uid, String(Date.now())); localStorage.setItem('wg_rk_ver_' + user.uid, String(RATING_VER)); } catch (e) {}
+  RKB.emit('mine', res);
+  return res;
 }
-let stopLogs = null;
+let stopLogs = null, stopSess = null, syncT = null;
+const stopMine = () => { if (stopLogs) { stopLogs(); stopLogs = null; } if (stopSess) { stopSess(); stopSess = null; } clearTimeout(syncT); };
 auth.onAuthStateChanged(u => {
-  if (stopLogs) { stopLogs(); stopLogs = null; }
+  stopMine(); rkHalt();
   if (!u) return;
+  rkStart();   // classement en direct dès la connexion
+  // dès que je modifie mes charges ou mes séances : recalcul presque immédiat (0,4 s, juste pour regrouper les modifications simultanées).
+  // La première lecture de chaque écoute est ignorée (c'est l'état déjà enregistré).
+  const watch = () => { let first = true; return () => {
+    if (first) { first = false; return; }
+    clearTimeout(syncT); syncT = setTimeout(() => { if (user && user.uid === u.uid) syncMine().catch(() => {}); }, 400);
+  }; };
+  stopLogs = db.collection('logs').where('uid', '==', u.uid).onSnapshot(watch(), () => {});
+  stopSess = db.collection('mysessions').where('uid', '==', u.uid).onSnapshot(watch(), () => {});
   setTimeout(async () => {
     if (!user || user.uid !== u.uid) return;
     // 1. mon rang : au démarrage (au plus toutes les 10 min) …
-    let last = 0; try { last = +localStorage.getItem('wg_rk_at_' + u.uid) || 0; } catch (e) {}
-    if (Date.now() - last < 10 * 60000) rkLoad(); else { try { await syncMine(); } catch (e) {} }
-    // … et dès que je modifie une séance (mise à jour 2,5 s plus tard, la première lecture est ignorée)
-    let first = true, t = null;
-    stopLogs = db.collection('logs').where('uid', '==', u.uid).onSnapshot(() => {
-      if (first) { first = false; return; }
-      clearTimeout(t); t = setTimeout(() => { if (user && user.uid === u.uid) syncMine().catch(() => {}); }, 2500);
-    }, () => {});
+    let last = 0, ver = 0; try { last = +localStorage.getItem('wg_rk_at_' + u.uid) || 0; ver = +localStorage.getItem('wg_rk_ver_' + u.uid) || 0; } catch (e) {}
+    if (ver === RATING_VER && Date.now() - last < 10 * 60000) rkLoad(); else { try { await syncMine(); } catch (e) {} }
     // 2. administrateur : remet à jour les rangs de tous les membres (au plus toutes les 6 h)
     if (isAdmin) {
-      let all = 0; try { all = +localStorage.getItem('wg_rk_all') || 0; } catch (e) {}
-      if (Date.now() - all > 6 * 3600000) { try { await recomputeAll(); } catch (e) { console.warn('Recalcul des rangs', e); } }
+      let all = 0, av2 = 0; try { all = +localStorage.getItem('wg_rk_all') || 0; av2 = +localStorage.getItem('wg_rk_allver') || 0; } catch (e) {}
+      if (Date.now() - all > 6 * 3600000 || av2 !== RATING_VER) { try { await recomputeAll(); } catch (e) { console.warn('Recalcul des rangs', e); } }
     }
   }, 8000);
 });
@@ -288,7 +375,7 @@ async function classePage() {
     $('#rkt').querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.t === tab));
     const l = list(), box = $('#rkl'), world = tab === 'all';
     if (!l.length) { box.innerHTML = `<div class="card pg-e mute">${world ? 'Personne n’est encore classé. Note tes charges dans tes séances pour ouvrir le bal !' : 'Aucun de tes amis n’est encore classé. Abonne-toi à des membres avec la loupe de l’onglet Social.'}</div>`; return; }
-    const head = `<p class="rk-cnt mute">${world ? `${l.length} classé${l.length > 1 ? 's' : ''} dans le monde` : `${l.length} classé${l.length > 1 ? 's' : ''} parmi tes amis`}</p>`;
+    const head = `<p class="rk-cnt mute"><span class="rk-live" title="Mis à jour en temps réel">En direct</span> ${world ? `${l.length} classé${l.length > 1 ? 's' : ''} dans le monde` : `${l.length} classé${l.length > 1 ? 's' : ''} parmi tes amis`}</p>`;
     if (q) {
       const f = l.map((r, i) => ({r, i})).filter(x => (x.r.u.name || '').toLowerCase().includes(q));
       box.innerHTML = f.length ? f.map(x => row(x.r, x.i)).join('') : '<p class="mute">Aucun membre classé avec ce nom.</p>'; return;
@@ -305,29 +392,24 @@ async function classePage() {
   $('#rkq').oninput = e => { q = e.target.value.trim().toLowerCase(); drawList(); };
   drawMe(); drawList();
   if (!$('#rkl')) return;
-  /* temps réel : le classement et mon score se mettent à jour tout seuls (sans recharger la page) */
-  let firstR = true, firstL = true, tl = null;
-  const offR = RANKS().onSnapshot(async sn => {
-    if (firstR) { firstR = false; return; }
+  /* temps réel : la page s'abonne au flux permanent (rkStart) — aucun délai, aucune relecture.
+     - un membre change de rang → la liste se redessine aussitôt ;
+     - je modifie mes charges / séances → mon score est recalculé (voir syncMine) et la page suit. */
+  let tr = null;
+  const live = () => { const c = document.querySelector('.rk-cnt'); if (c && !c.querySelector('.rk-live')) c.insertAdjacentHTML('afterbegin', '<span class="rk-live" title="Mis à jour en temps réel">En direct</span> '); };
+  const redraw = () => { clearTimeout(tr); tr = setTimeout(() => { if (!$('#rkl')) return; all = build(); drawMe(); drawList(); live(); }, 60); };
+  const offB = RKB.on(async (t, d) => {
     if (!$('#rkl')) return;
-    const m = {}; sn.docs.forEach(d => { m[d.id] = d.data(); }); RK.map = m; RK.t = Date.now();
-    if (Object.keys(m).some(id => !users[id])) { try { users = await allUsers(true); } catch (e) {} }
-    const mine = m[user.uid];
-    if (mine && Math.round(mine.rating) !== res.rating) { try { res = await computeRating(user.uid); } catch (e) {} }
-    if (!$('#rkl')) return;
-    all = build(); drawMe(); drawList();
-  }, () => {});
-  const offL = db.collection('logs').where('uid', '==', user.uid).onSnapshot(() => {
-    if (firstL) { firstL = false; return; }
-    clearTimeout(tl);
-    tl = setTimeout(async () => {
-      if (!$('#rkl')) return;
-      try { res = await computeRating(user.uid); await saveMine(res); } catch (e) {}
-      if (!$('#rkl')) return;
-      all = build(); drawMe(); drawList();
-    }, 1500);
-  }, () => {});
-  rkStopFn = () => { offR(); offL(); clearTimeout(tl); };
+    if (t === 'mine') res = d;
+    else {
+      if (Object.keys(RK.map).some(id => !users[id])) { try { users = await allUsers(true); } catch (e) {} }
+      const mine = RK.map[user.uid];
+      if (mine && Math.round(mine.rating) !== res.rating) { try { res = await computeRating(user.uid); } catch (e) {} }
+    }
+    redraw();
+  });
+  live();
+  rkStopFn = () => { offB(); clearTimeout(tr); };
   try { pageUnsub = rkStopFn; } catch (e) {}
   if ($('#rkall')) $('#rkall').onclick = async () => {
     const b = $('#rkall'), r = $('#rkallr'); b.disabled = true; b.textContent = 'Calcul en cours…';
