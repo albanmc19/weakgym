@@ -26,8 +26,11 @@ const TIERS = [
 const PLACEMENT = 3;      // séances avec charges nécessaires avant d'être classé
 const MAXKG = 500;        // une charge au-dessus est ignorée (faute de frappe)
 const VOL_CAP = 1000;     // points maximum apportés par le volume total
-const RATING_VER = 2;     // à augmenter quand le barème change : tout le monde est alors recalculé aussitôt
+const RATING_VER = 3;     // à augmenter quand le barème change : tout le monde est alors recalculé aussitôt
 const TOP_N = 14;         // nombre d'exercices (familles) comptés pour la force
+const WALK_PT = 1 / 3;     // marche sur tapis : 1 point toutes les 3 minutes (soit 20 pts par heure)
+const WALK_CAP = 600;      // points maximum apportés par la marche sur tapis
+const WALK_MAXMIN = 180;   // minutes maximum comptées par séance et par exercice (faute de frappe)
 
 const tierOf = (rating, sessions) => {
   if (sessions < PLACEMENT) return 0;
@@ -150,6 +153,17 @@ const FAMS = [
 const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 /* Exercice absent de la liste : on regarde s'il se fait à la machine / à la poulie (charge facile → coef réduit), sinon coef neutre. */
 const MACH = /machine|poulie|cable|guidee|convergent|selectorise/;
+/* marche sur tapis : nom contenant « tapis » ou « marche » (mot entier). « Marche du fermier », « marche en fente »… restent de la force */
+const WALK = /\b(tapis|marche|walking|treadmill)\b/;
+const NOTWALK = /fermier|farmer|fente|lunge|traineau|sled/;
+const isWalk = name => { const n = norm(name); return WALK.test(n) && !NOTWALK.test(n); };
+const minOf = x => {   // « 30 », « 30 min », « 45 mn », « 1h15 », « 90 s » → minutes ; une saisie en kg est ignorée
+  const s = String(x == null ? '' : x).toLowerCase().replace(',', '.');
+  if (/kg/.test(s)) return 0;
+  let m = /(\d+(?:\.\d+)?)\s*h(?:eures?)?\s*(\d+)?/.exec(s); if (m) return +m[1] * 60 + (+m[2] || 0);
+  m = /(\d+(?:\.\d+)?)\s*(?:sec|secondes?|s)\b/.exec(s); if (m) return +m[1] / 60;
+  m = /\d+(?:\.\d+)?/.exec(s); return m ? +m[0] : 0;
+};
 function famOf(name) {
   const n = norm(name), dumb = /halter|dumbbell|\bdb\b|un bras|1 bras|unilateral|alterne|kettlebell|\bkb\b/.test(n), m = dumb ? 1.6 : 1;   // haltères / un bras : charge par main, donc plus légère
   for (const [id, re, c] of FAMS) if (re.test(n)) return {id: id + (dumb ? '-db' : ''), coef: c * m};
@@ -159,7 +173,8 @@ function famOf(name) {
 /* ---------- calcul du rating ----------
    Force   = somme, sur les 14 meilleures familles d'exercices, de  coef × (meilleure charge × (1 + reps/30))
    Volume  = somme de coef × charge × reps de toutes les séries, divisée par 1000 (plafonnée à 1000 points)
-   Rating  = Force + Volume */
+   Marche  = temps passé sur tapis (séances de base ET séances perso) : 1 point toutes les 3 minutes (plafonné à 600 points)
+   Rating  = Force + Volume + Marche */
 async function computeRating(uid) {
   const [logs, ss, ps] = await Promise.all([
     logsOf(uid),
@@ -170,14 +185,21 @@ async function computeRating(uid) {
   return rate(logs, byId);
 }
 function rate(logs, byId) {
-  const fam = {}; let vol = 0, sess = 0, since = '';
+  const fam = {}; let vol = 0, sess = 0, since = '', walk = 0;
   logs.forEach(l => {
     const s = byId[l.sessionId]; if (!s || !Array.isArray(s.exercises)) return;
     let had = false;
     s.exercises.forEach((e, i) => {
-      if (!e || !e.name || isTime(e) || CARDIO.test(e.name)) return;
+      if (!e || !e.name) return;
+      const walking = isWalk(e.name);
+      if (!walking && (isTime(e) || CARDIO.test(e.name))) return;
       let raw = l.sets && Array.isArray(l.sets[i]) ? l.sets[i] : [];
       if (!raw.some(x => String(x).trim())) raw = l.w && String(l.w[i] || '').trim() ? [l.w[i]] : [];
+      if (walking) {   // marche sur tapis : on additionne les minutes saisies (séries), plafonnées par séance
+        const m = Math.min(WALK_MAXMIN, raw.reduce((a, x) => a + minOf(x), 0));
+        if (m > 0) { had = true; walk += m; }
+        return;
+      }
       const loads = raw.map(x => parseLoad(String(x))).filter(x => x != null && x > 0 && x <= MAXKG);
       if (!loads.length) return;
       had = true;
@@ -191,8 +213,9 @@ function rate(logs, byId) {
   });
   const top = Object.values(fam).map(f => ({name: f.name, kg: f.kg, reps: f.reps, coef: f.coef, pts: f.coef * f.best})).sort((a, b) => b.pts - a.pts);
   const strength = top.slice(0, TOP_N).reduce((a, f) => a + f.pts, 0), volume = Math.min(VOL_CAP, vol / 1000);
-  const rating = Math.round(strength + volume);
-  return {since, rating, strength: Math.round(strength), volume: Math.round(volume), sessions: sess, top: top.slice(0, TOP_N), tier: tierOf(rating, sess)};
+  const walkPts = Math.min(WALK_CAP, walk * WALK_PT);
+  const rating = Math.round(strength + volume + walkPts);
+  return {since, rating, strength: Math.round(strength), volume: Math.round(volume), walk: Math.round(walkPts), walkMin: Math.round(walk), sessions: sess, top: top.slice(0, TOP_N), tier: tierOf(rating, sess)};
 }
 
 /* ---------- recalcul pour TOUS les membres (administrateur) ----------
@@ -314,10 +337,11 @@ async function classePage() {
     <div class="seg" id="rkt"><a href="#" data-t="all">Mondial</a><a href="#" data-t="abo">Amis</a></div><input id="rkq" type="search" placeholder="Rechercher un membre…" aria-label="Rechercher un membre" autocomplete="off"><div id="rkl"><p class="mute">Chargement…</p></div>
     ${isAdmin ? '<div class="card rk-adm"><b>Administration</b><p class="mute" style="margin:4px 0 10px">Remet à jour le rang de tous les membres à partir de toutes leurs séances, même ceux qui ne sont pas connectés.</p><button id="rkall" class="alt" style="width:100%">Recalculer tous les membres</button><p id="rkallr" class="mute" style="margin:8px 0 0" hidden></p></div>' : ''}
     <details class="card rk-how"><summary>Comment fonctionne le classement ?</summary>
-      <p>Ton <b>rating</b> se calcule avec <b>toutes</b> les charges que tu as notées dans tes séances, anciennes comprises (exercices en kg). Il se met à jour tout seul à chaque ouverture du classement.</p>
+      <p>Ton <b>rating</b> se calcule avec <b>toutes</b> les charges que tu as notées dans tes séances, anciennes comprises (exercices en kg) et le temps passé à marcher sur tapis. Il se met à jour tout seul à chaque ouverture du classement.</p>
       <p><b>Force</b> : pour chacun de tes meilleurs exercices, on prend ta meilleure charge (augmentée selon le nombre de reps) multipliée par un coefficient. Un exercice où l’on charge facilement (presse, par exemple) rapporte moins de points par kilo qu’un exercice difficile (développé militaire, curl, élévations…). Les exercices aux haltères sont un peu plus valorisés, car la charge est par main.</p>
       <p><b>Volume</b> : tout ce que tu soulèves au fil des séances ajoute des points (plafonné), pour récompenser la régularité.</p>
-      <p>Il faut au moins ${PLACEMENT} séances avec des charges pour être classé. Les exercices en minutes et le cardio ne comptent pas. Seules tes charges comptent, pas ton poids de corps.</p>
+      <p><b>Marche sur tapis</b> : les minutes notées sur un exercice « tapis » ou « marche » rapportent <b>1 point toutes les 3 minutes</b> (séances de base comme séances perso, plafonné à ${WALK_CAP} points).</p>
+      <p>Il faut au moins ${PLACEMENT} séances avec des charges ou de la marche sur tapis pour être classé. Les autres exercices en minutes et le cardio ne comptent pas. Seules tes charges comptent, pas ton poids de corps.</p>
       <div class="rk-lad rk-lad-t">${TIERS.map((T, i) => `<div class="${i ? '' : 'none'}"><span class="rk-bg">${badgeSvg(i)}</span><b>${T.n}</b><small>${i ? T.min + ' pts' : '< ' + TIERS[1].min + ' pts'}</small></div>`).join('')}</div>
     </details>`;
   let res = null, rulesErr = false;
@@ -336,7 +360,7 @@ async function classePage() {
     const t = res.tier, T = TIERS[t], nx = TIERS[t + 1], pos = all.findIndex(r => r.uid === user.uid) + 1;
     const lo = t ? T.min : 0, hi = nx ? nx.min : lo, pct = nx ? Math.max(0, Math.min(100, (res.rating - lo) / (hi - lo) * 100)) : 100;
     const need = Math.max(0, PLACEMENT - res.sessions);
-    const sub = t === 0 ? (need ? `Encore <b>${need}</b> séance${need > 1 ? 's' : ''} avec des charges pour être classé.` : `Encore <b>${Math.max(0, TIERS[1].min - res.rating)}</b> pts pour atteindre ${TIERS[1].n}.`)
+    const sub = t === 0 ? (need ? `Encore <b>${need}</b> séance${need > 1 ? 's' : ''} avec des charges ou de la marche sur tapis pour être classé.` : `Encore <b>${Math.max(0, TIERS[1].min - res.rating)}</b> pts pour atteindre ${TIERS[1].n}.`)
       : nx ? `Encore <b>${hi - res.rating}</b> pts pour atteindre <b>${nx.n}</b>.` : 'Rang maximum atteint. Respect.';
     const show = (RK.map[user.uid] || {}).show === true;
     $('#rkme').innerHTML = `${rulesErr ? '<div class="card rk-warn">Le classement n’est pas encore activé côté serveur : ajoute les règles Firestore de la collection <b>ranks</b> (voir le fichier fourni), puis rouvre cette page.</div>' : ''}
@@ -350,7 +374,7 @@ async function classePage() {
       <div class="rk-lad">${TIERS.slice(1).map((x, i) => `<div class="${i + 1 === t ? 'cur' : i + 1 < t ? 'got' : ''}"><span class="rk-bg">${badgeSvg(i + 1)}</span><b>${x.n}</b><small>${x.min} pts</small></div>`).join('')}</div>
       <details class="card rk-det"><summary>Détail de mon score</summary>
         <div class="stats s3"><div class="stat"><b>${res.strength}</b><span>Force</span></div><div class="stat"><b>${res.volume}</b><span>Volume</span></div><div class="stat"><b>${res.sessions}</b><span>Séances avec charges</span></div></div>
-        ${res.top.length ? `<div class="rk-top">${res.top.map(f => `<div><span><b>${esc(f.name)}</b><small>${fmtNum(f.kg)} kg × ${f.reps} · coef ×${fmtNum(f.coef)}</small></span><b>${Math.round(f.pts)}</b></div>`).join('')}</div>` : '<p class="mute">Note des charges dans tes séances : tes meilleurs exercices apparaîtront ici.</p>'}
+        ${res.top.length || res.walk ? `<div class="rk-top">${res.walk ? `<div><span><b>Marche sur tapis</b><small>${res.walkMin} min · 1 pt toutes les 3 min (max ${WALK_CAP})</small></span><b>${res.walk}</b></div>` : ''}${res.top.map(f => `<div><span><b>${esc(f.name)}</b><small>${fmtNum(f.kg)} kg × ${f.reps} · coef ×${fmtNum(f.coef)}</small></span><b>${Math.round(f.pts)}</b></div>`).join('')}</div>` : '<p class="mute">Note des charges dans tes séances : tes meilleurs exercices apparaîtront ici.</p>'}
       </details>`;
     const c = $('#rksh');
     if (c) c.onchange = async () => {
@@ -422,5 +446,5 @@ window.rkLoad = rkLoad;
 window.rkBadgeHtml = rkBadgeHtml;
 window.rkProfileChip = rkProfileChip;
 window.classePage = classePage;
-window.__rk = {computeRating, famOf, tierOf, TIERS};
+window.__rk = {computeRating, rate, famOf, tierOf, minOf, isWalk, TIERS};
 })();
