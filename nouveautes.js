@@ -19,6 +19,15 @@
 
 const UPDATES = [
   {
+    date: '2026-11-27',
+    title: 'La marche sur tapis compte pour le classé',
+    items: [
+      ['Classé', 'La marche sur tapis rapporte maintenant des points : 1 point toutes les 3 minutes (jusqu’à 600 points), en séance de base comme en séance perso.'],
+      ['Classé', 'Une séance avec de la marche sur tapis compte pour ton placement, et le détail de ton score affiche une ligne « Marche sur tapis ». Les rangs sont recalculés automatiquement.'],
+      ['Badge', 'Le badge Assidu a un nouveau dessin : un calendrier avec une coche.']
+    ]
+  },
+  {
     date: '2026-11-26',
     title: 'Connexion quotidienne',
     items: [
